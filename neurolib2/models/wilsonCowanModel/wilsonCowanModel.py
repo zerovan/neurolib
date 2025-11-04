@@ -23,18 +23,18 @@ class WilsonCowan(BaseModel):
     """
 
     def __init__(self,
-                 tau_e: float = 10.0,
-                 tau_i: float = 20.0,
-                 w_ee: float = 12.0,
-                 w_ei: float = 10.0,
-                 w_ie: float = 10.0,
-                 w_ii: float = 0.0,
-                 P_e: float = 0.0,
+                 tau_e: float = 1,
+                 tau_i: float = 40.0,
+                 w_ee=16.0,   # stronger excitation
+                 w_ei=12.0,   # strong inhibition
+                 w_ie=15.0,   # excitatory -> inhibitory coupling
+                 w_ii=3,    # self-inhibition
+                 P_e: float = 1.0,
                  P_i: float = 0.0,
                  a_e: float = 1.0,
                  a_i: float = 1.0,
-                 theta_e: float = 0.0,
-                 theta_i: float = 0.0,
+                 theta_e=2.0,
+                 theta_i=2.0,
                  dt: float = 0.1,
                  initial_state: Optional[np.ndarray] = None):
         # state vector: [E, I]

@@ -8,6 +8,6 @@ from neurolib2.models.wilsonCowanModel.wilsonCowanModel import WilsonCowan
 if __name__ == "__main__":
     model = WilsonCowan(dt=0.05)
     # small tonic input to E
-    model.set_params(P_e=1.0, P_i=0.0)
+    model.set_params()
     times, states = model.simulate(duration=1000.0)
     model.plot(times, states)
