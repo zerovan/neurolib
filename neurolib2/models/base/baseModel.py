@@ -1,76 +1,44 @@
 from typing import Dict, Optional, Tuple
-import numpy as np
+import jax
+import jax.numpy as jnp
+from jax import lax
+from dataclasses import dataclass
 
 
+@dataclass
 class BaseModel:
-    """
-    Minimal base class for time-stepped dynamical systems using Euler integration.
+    
+    state: jnp.ndarray
+    params: Dict[str, float]
+    dt: float = 0.1
+    t: float = 0.0
 
-    Subclasses should implement:
-        _dynamics(state, t, params) -> np.ndarray
-
-    Attributes:
-        params: dict of model parameters
-        state: numpy array (state vector)
-        dt: time step
-        t: current simulation time
-    """
-
-    def __init__(self,
-                 initial_state: np.ndarray,
-                 params: Optional[Dict] = None,
-                 dt: float = 0.1):
-        self.params = params or {}
-        self.state = np.array(initial_state, dtype=float)
-        self.dt = float(dt)
+    def reset(self, state: Optional[jnp.ndarray] = None):
+        if state is not None:
+            self.state = state
         self.t = 0.0
 
-    def reset(self, initial_state: Optional[np.ndarray] = None):
-        """Reset time and optionally the state."""
-        if initial_state is not None:
-            self.state = np.array(initial_state, dtype=float)
-        self.t = 0.0
-
-    def _dynamics(self, state: np.ndarray, t: float, params: Dict) -> np.ndarray:
-        """Return time derivative (dstate/dt). Must be implemented by subclasses."""
+    def _dynamics(self, state: jnp.ndarray, t: float, params: Dict[str, float]) -> jnp.ndarray:
         raise NotImplementedError
 
-    def _step(self):
-        """Perform one Euler integration step."""
-        deriv = self._dynamics(self.state, self.t, self.params)
-        self.state = self.state + self.dt * deriv
-        self.t += self.dt
+    def _step(self, state: jnp.ndarray, t: float, params: Dict[str, float]) -> Tuple[jnp.ndarray, float]:    
+        deriv = self._dynamics(state, t, params)
+        new_state = state + self.dt * deriv
+        return new_state, t + self.dt
 
-    def simulate(self,
-                 duration: float,
-                 record_states: bool = True,
-                 report_every: Optional[int] = None
-                 ) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Simulate the model for the given duration using Euler integration.
+    def simulate(self, duration: float) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        n_steps = int(jnp.ceil(duration / self.dt))
 
-        Returns:
-            times: (N_steps+1,)
-            states: (N_steps+1, state_dim)
-        """
-        n_steps = int(np.ceil(duration / self.dt))
-        times = np.zeros(n_steps + 1)
-        times[0] = self.t
+        def body(carry, _):
+            state, t = carry
+            new_state, new_t = self._step(state, t, self.params)
+            return (new_state, new_t), (new_t, new_state)
 
-        if record_states:
-            states = np.zeros((n_steps + 1, self.state.size))
-            states[0] = self.state.copy()
-
-        for i in range(1, n_steps + 1):
-            self._step()
-            times[i] = self.t
-            if record_states:
-                states[i] = self.state.copy()
-            if report_every is not None and (i % report_every == 0):
-                print(f"t={self.t:.3f}s")
-
-        return (times, states) if record_states else (times, self.state.copy())
+        (_, _), (times, states) = lax.scan(body, (self.state, self.t), None, length=n_steps)
+        times = jnp.concatenate([jnp.array([self.t]), times])
+        states = jnp.vstack([self.state, states])
+        return times, states
 
     def set_params(self, **kwargs):
-        """Update model parameters."""
-        self.params.update(kwargs)
+        new_params = {**self.params, **kwargs}
+        return BaseModel(state=self.state, params=new_params, dt=self.dt, t=self.t)
