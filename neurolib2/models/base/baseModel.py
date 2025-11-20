@@ -25,7 +25,7 @@ class BaseModel(eqx.Module):
         new_state = state + self.dt * deriv
         return new_state, t + self.dt
 
-    def simulate(self, duration: float) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    def simulate(self, duration: float, steps: int) -> Tuple[jnp.ndarray, jnp.ndarray]:
         n_steps = int(jnp.ceil(duration / self.dt))
 
         def body(carry, _):
