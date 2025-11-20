@@ -8,7 +8,7 @@ from neurolib2.models.wilsonCowanModel.wilsonCowanModel import WilsonCowan
 if __name__ == "__main__":
     model = WilsonCowan.create_default(dt=0.01)
     times, states = model.simulate(10, 200)
-    model.plot(times,states)
+    model.plot(times, states)
     print(states)
     grad_model = model.derivative_model(10.0, with_respect_to=["tau_e", "w_ee"])
     print(grad_model.tau_e, grad_model.w_ee)
