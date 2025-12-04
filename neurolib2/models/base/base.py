@@ -34,6 +34,7 @@ class BaseModel(eqx.Module):
         self.state = state
         self.dt = dt
         self.fiber_count_matrix = fiber_count_matrix
+        # connectivity_matrix[to, from]
         self.connectivity_matrix = jnp.fill_diagonal(self.fiber_count_matrix, 0.0, inplace=False)
         self.fiber_length_matrix = fiber_length_matrix
         self.signal_propagation_speed = signal_propagation_speed
@@ -55,13 +56,18 @@ class BaseModel(eqx.Module):
     def history_fn(self, t):
         return NotImplementedError
 
-    def simulate(self, duration=50.0, steps=1000):
+    def simulate(self, duration=50.0):
         t0, t1 = 0.0, duration
-        ts = jnp.linspace(t0, t1, steps)
+        ts = jnp.arange(t0, t1, self.dt)
 
         term = diffrax.ODETerm(self.dynamics)
-        solver = diffrax.Bosh3()
+        solver = diffrax.Tsit5()
 
+        # TODO: deduplicate
+        # Instead of flattening, we should only keep unique delays
+        # (instead of [1,2,3,3,2,1,1,2,3] we should have only [1,2,3])
+        # ~self.delay_matrix.flatten().unique()
+        # requires mapping unique -> full matrix?
         delays = diffrax.Delays(
             delays=[lambda t, y, args: d for d in self.delay_matrix.flatten()],
             initial_discontinuities=jnp.array([0.0]),
@@ -72,18 +78,19 @@ class BaseModel(eqx.Module):
             solver,
             t0=t0,
             t1=t1,
-            dt0=0.01,
-            y0=self.history_fn,
+            dt0=self.dt,
+            y0=lambda t: self.history_fn(t),
             args=None,
             saveat=diffrax.SaveAt(ts=ts, dense=True),
-            stepsize_controller=diffrax.PIDController(
-                rtol=1e-3,
-                atol=1e-6,
-            ),
+            # stepsize_controller=diffrax.PIDController(
+            #    rtol=1e-3,
+            #    atol=1e-6,
+            # ),
             delays=delays,
             max_steps=16**5,
         )
-        return sol.ts, sol.ys
+        print(type(sol.ys), jnp.array(sol.ys).shape)
+        return sol.ts, jnp.array(sol.ys)
 
     def derivative_model(self, x: float, with_respect_to: Union[str, Sequence[str]]) -> "BaseModel":
         """

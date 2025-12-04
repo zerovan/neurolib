@@ -61,43 +61,67 @@ class WilsonCowan(BaseModel):
         history shape: (num_delays, len(y), number_of_regions)
         """
         exc, inh = y
-        # print(len(history[0][0]))
-        # exc_delayed = history[0].reshape(self.number_of_regions, self.number_of_regions)
-        # exc_input = jnp.sum(self.K_gl * self.connectivity_matrix * exc_history[range_N, -Dmat_ndt - 1], axis=1)
-        region_selection = []
-        for i in range(self.number_of_regions):
-            region_selection += [i]
-        region_selection = jnp.array(region_selection)
-        exc_delayed = jnp.array(history)[:, 0, region_selection]
-        print(exc_delayed.shape)
-        return jnp.zeros(self.number_of_regions), jnp.zeros(self.number_of_regions)
-        """
-        # E_delayed, I_delayed = history[0]
-        # input_e = self.w_ee * E_delayed - self.w_ei * I + self.P_e
-        # input_i = self.w_ie * E - self.w_ii * I_delayed + self.P_i
 
-        delayed_EI, delayed_IE = history
+        # unflatten the delays
+        history = jnp.array(history).reshape(
+            self.number_of_regions, self.number_of_regions, len(y), self.number_of_regions
+        )  # TODO: confirm that reshaping works correctly
+        history = jnp.nan_to_num(history, nan=0.0)  # TODO: why did we have nan's?
+        # jax.debug.print("{}", history)
 
-        E_tau_EI = delayed_EI[0]  # E(t - tau_EI)
-        I_tau_IE = delayed_IE[1]  # I(t - tau_IE)
+        # TODO: get rid of loops
+        exc_interareal_input = []
+        for to_region in range(self.number_of_regions):
+            row_sum = 0.0
+            # ? row_sum = self.connectivity_matrix[to_region] * jnp.diagonal(history[to_region, :, 0])
+            for from_region in range(self.number_of_regions):
+                row_sum += (
+                    self.connectivity_matrix[to_region, from_region] * history[to_region, from_region][0][from_region]
+                )
+            exc_interareal_input.append(row_sum)
+        exc_interareal_input = jnp.array(exc_interareal_input)
+        # jax.debug.print("{}", exc_interareal_input)
 
-        input_e = self.w_ee * E - self.w_ei * I_tau_IE + self.P_e
-        input_i = self.w_ie * E_tau_EI - self.w_ii * I + self.P_i
-
-        S_e = self._S_e(input_e)
-        S_i = self._S_i(input_i)
-
-        dE = (-E + S_e) / self.tau_e
-        dI = (-I + S_i) / self.tau_i
-        return jnp.array([dE, dI])
-        """
+        exc_rhs = (
+            1
+            / self.tau_e
+            * (
+                -exc
+                + (1 - exc)
+                * self._S_e(
+                    self.w_ee * exc  # input from within the excitatory population
+                    - self.w_ie * inh  # input from the inhibitory population
+                    + exc_interareal_input  # input from other nodes
+                    # TODO + exc_ext_baseline  # baseline external input (static)
+                    # TODO + exc_ext[:, i]  # time-dependent external input
+                )
+                # TODO + exc_ou  # ou noise
+            )
+        )
+        inh_rhs = (
+            1
+            / self.tau_i
+            * (
+                -inh
+                + (1 - inh)
+                * self._S_i(
+                    self.w_ei * exc  # input from the excitatory population
+                    - self.w_ii * inh  # input from within the inhibitory population
+                    # TODO + inh_ext_baseline  # baseline external input (static)
+                    # TODO + inh_ext[:, i]  # time-dependent external input
+                )
+                # TODO + inh_ou  # ou noise
+            )
+        )
+        return exc_rhs, inh_rhs
 
     def history_fn(self, t):
-        return jnp.zeros(self.number_of_regions), jnp.zeros(self.number_of_regions)
+        return jnp.zeros(self.number_of_regions, dtype=float), jnp.zeros(self.number_of_regions, dtype=float)
 
     def plot(self, times: jnp.ndarray, states: jnp.ndarray, show: bool = True):
-        E = states[:, 0]
-        I = states[:, 1]
+        # plot activity of first node
+        E = states[0, :, 0]
+        I = states[1, :, 0]
         plt.figure(figsize=(9, 4))
         plt.plot(times, E, label="E (exc)", linewidth=1.5)
         plt.plot(times, I, label="I (inh)", linewidth=1.5)
@@ -121,14 +145,14 @@ class WilsonCowan(BaseModel):
                 [1, 2, 3],
                 [1, 2, 3],
             ]
-        )
+        ).astype(float)
         fiber_count_matrix = jnp.array(
             [
                 [1, 2, 3],
                 [1, 2, 3],
                 [1, 2, 3],
             ]
-        )
+        ).astype(float)
         return WilsonCowan(
             state=initial_state, dt=dt, fiber_length_matrix=fiber_length_matrix, fiber_count_matrix=fiber_count_matrix
         )
