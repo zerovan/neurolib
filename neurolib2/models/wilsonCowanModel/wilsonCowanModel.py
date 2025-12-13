@@ -58,14 +58,16 @@ class WilsonCowan(BaseModel):
 
     def dynamics(self, t, y, args, *, history):
         """
-        history shape: (num_delays, len(y), number_of_regions)
+        history shape: (num_delays, len(y), number_of_regions)(9,2,3)
         """
         exc, inh = y
-
+        history = jnp.array(history)
+        
         # unflatten the delays
-        history = jnp.array(history).reshape(
-            self.number_of_regions, self.number_of_regions, len(y), self.number_of_regions
-        )  # TODO: confirm that reshaping works correctly
+        # history = jnp.array(history).reshape(
+        #     self.number_of_regions, self.number_of_regions, len(y), self.number_of_regions
+        # )  # TODO: confirm that reshaping works correctly
+        
         history = jnp.nan_to_num(history, nan=0.0)  # TODO: why did we have nan's?
         # jax.debug.print("{}", history)
 
@@ -75,8 +77,10 @@ class WilsonCowan(BaseModel):
             row_sum = 0.0
             # ? row_sum = self.connectivity_matrix[to_region] * jnp.diagonal(history[to_region, :, 0])
             for from_region in range(self.number_of_regions):
+                delay_idx = self.delay_index_matrix[to_region, from_region]
+                delayed_exc = history[delay_idx, 0, from_region]
                 row_sum += (
-                    self.connectivity_matrix[to_region, from_region] * history[to_region, from_region][0][from_region]
+                    self.connectivity_matrix[to_region, from_region] * delayed_exc
                 )
             exc_interareal_input.append(row_sum)
         exc_interareal_input = jnp.array(exc_interareal_input)
@@ -119,20 +123,22 @@ class WilsonCowan(BaseModel):
         return jnp.zeros(self.number_of_regions, dtype=float), jnp.zeros(self.number_of_regions, dtype=float)
 
     def plot(self, times: jnp.ndarray, states: jnp.ndarray, show: bool = True):
-        # plot activity of first node
-        E = states[0, :, 0]
-        I = states[1, :, 0]
-        plt.figure(figsize=(9, 4))
-        plt.plot(times, E, label="E (exc)", linewidth=1.5)
-        plt.plot(times, I, label="I (inh)", linewidth=1.5)
-        plt.legend()
+        num_regions = self.number_of_regions
+        plt.figure(figsize=(10, 5))
+
+        for r in range(num_regions):
+            plt.plot(times, states[0, :, r], label=f"E node {r}")
+            plt.plot(times, states[1, :, r], label=f"I node {r}", linestyle="--")
+
         plt.xlabel("time (s)")
         plt.ylabel("activity")
+        plt.title("Wilson-Cowan: all node activities")
         plt.legend()
-        plt.title("Wilson-Cowan dynamics")
         plt.tight_layout()
+
         if show:
             plt.show()
+
 
     @staticmethod
     def create_default(dt: float = 0.1, initial_state: Optional[jnp.ndarray] = None):

@@ -17,6 +17,10 @@ class BaseModel(eqx.Module):
     signal_propagation_speed: float
     delay_matrix: jnp.ndarray
     number_of_regions: int
+
+    delay_index_matrix: jnp.ndarray
+    unique_delays: jnp.ndarray
+
     K_gl: float = 1.0
     dt: float
     t: float = 0.0
@@ -43,6 +47,20 @@ class BaseModel(eqx.Module):
             assert matrix.shape[0] == matrix.shape[1]
         self.number_of_regions = self.fiber_count_matrix.shape[0]
         self.delay_matrix = compute_delay_matrix(self.fiber_length_matrix, self.signal_propagation_speed)
+        
+        # Precompute unique delays and index mapping
+        flat_delays = self.delay_matrix.flatten()
+        unique_delays, inverse_indices = jnp.unique(
+            flat_delays,
+            return_inverse=True
+        )
+        self.unique_delays = unique_delays
+        self.delay_index_matrix = inverse_indices.reshape(
+            self.number_of_regions,
+            self.number_of_regions
+        )
+        
+        
         self.key = jax.random.PRNGKey(seed) if seed is not None else jax.random.PRNGKey(0)
 
     def reset(self, state: Optional[jnp.ndarray] = None):
@@ -69,7 +87,7 @@ class BaseModel(eqx.Module):
         # ~self.delay_matrix.flatten().unique()
         # requires mapping unique -> full matrix?
         delays = diffrax.Delays(
-            delays=[lambda t, y, args: d for d in self.delay_matrix.flatten()],
+            delays=[lambda t, y, args, d=d: d for d in self.unique_delays],
             initial_discontinuities=jnp.array([0.0]),
         )
 
