@@ -62,29 +62,19 @@ class WilsonCowan(BaseModel):
         """
         exc, inh = y
         history = jnp.array(history)
-        
-        # unflatten the delays
-        # history = jnp.array(history).reshape(
-        #     self.number_of_regions, self.number_of_regions, len(y), self.number_of_regions
-        # )  # TODO: confirm that reshaping works correctly
-        
         history = jnp.nan_to_num(history, nan=0.0)  # TODO: why did we have nan's?
         # jax.debug.print("{}", history)
 
-        # TODO: get rid of loops
-        exc_interareal_input = []
-        for to_region in range(self.number_of_regions):
-            row_sum = 0.0
-            # ? row_sum = self.connectivity_matrix[to_region] * jnp.diagonal(history[to_region, :, 0])
-            for from_region in range(self.number_of_regions):
-                delay_idx = self.delay_index_matrix[to_region, from_region]
-                delayed_exc = history[delay_idx, 0, from_region]
-                row_sum += (
-                    self.connectivity_matrix[to_region, from_region] * delayed_exc
-                )
-            exc_interareal_input.append(row_sum)
-        exc_interareal_input = jnp.array(exc_interareal_input)
-        # jax.debug.print("{}", exc_interareal_input)
+        delayed_exc = history[
+            self.delay_index_matrix,  # (N, N)
+            0,                        # excitatory population
+            jnp.arange(self.number_of_regions)[None, :]  # from_region
+        ]
+        print("delayed_exc:", delayed_exc.shape)
+        exc_interareal_input = jnp.sum(
+            self.connectivity_matrix * delayed_exc,
+            axis=1
+        )
 
         exc_rhs = (
             1
