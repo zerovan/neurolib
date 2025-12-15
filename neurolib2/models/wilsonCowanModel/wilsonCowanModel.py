@@ -23,6 +23,11 @@ class WilsonCowan(BaseModel):
     a_i: jax.Array
     theta_e: jax.Array
     theta_i: jax.Array
+    
+    # OU noise parameters
+    ou_theta: jax.Array
+    ou_sigma: jax.Array
+    ou_mu: jax.Array
 
     def __init__(
         self,
@@ -46,6 +51,10 @@ class WilsonCowan(BaseModel):
         self.a_i = jnp.array(1.0)
         self.theta_e = jnp.array(2.0)
         self.theta_i = jnp.array(2.0)
+        
+        self.ou_theta = jnp.array(5.0) # decay rate (1 / timescale)
+        self.ou_sigma = jnp.array(0.2) # noise intensity (std of driving Wiener process)
+        self.ou_mu = jnp.array(0.0) # long-run mean
 
     def _logistic(self, x: jnp.ndarray, a: float, theta: float) -> jnp.ndarray:
         return 1.0 / (1.0 + jnp.exp(-a * (x - theta)))
@@ -70,11 +79,28 @@ class WilsonCowan(BaseModel):
             0,                        # excitatory population
             jnp.arange(self.number_of_regions)[None, :]  # from_region
         ]
-        print("delayed_exc:", delayed_exc.shape)
+        
         exc_interareal_input = jnp.sum(
             self.connectivity_matrix * delayed_exc,
             axis=1
         )
+
+        step = jnp.floor(t / self.dt).astype(jnp.int32)
+        key = jax.random.fold_in(self.key, step)
+        normal_draw = jax.random.normal(key, shape=(self.number_of_regions,))
+
+
+        # discrete-time OU approximation (stationary marginal variance used):
+        # x_{t+dt} = mu + exp(-theta*dt) * (x_t - mu) + sigma * sqrt(1 - exp(-2*theta*dt)) * N(0,1)
+        # because we don't maintain x_t as separate state here, we use the
+        # stationary increment term and set the previous value to mu. This is a
+        # compromise that yields time-varying, parameter-controlled noise.
+        alpha = jnp.exp(-self.ou_theta * self.dt)
+        std_term = jnp.sqrt(1.0 - jnp.exp(-2.0 * self.ou_theta * self.dt))
+
+
+        exc_ou = self.ou_mu * (1.0 - alpha) + self.ou_sigma * std_term * normal_draw
+        inh_ou = self.ou_mu * (1.0 - alpha) + self.ou_sigma * std_term * normal_draw
 
         exc_rhs = (
             1
@@ -89,7 +115,7 @@ class WilsonCowan(BaseModel):
                     # TODO + exc_ext_baseline  # baseline external input (static)
                     # TODO + exc_ext[:, i]  # time-dependent external input
                 )
-                # TODO + exc_ou  # ou noise
+                + exc_ou  # ou noise
             )
         )
         inh_rhs = (
@@ -104,7 +130,7 @@ class WilsonCowan(BaseModel):
                     # TODO + inh_ext_baseline  # baseline external input (static)
                     # TODO + inh_ext[:, i]  # time-dependent external input
                 )
-                # TODO + inh_ou  # ou noise
+                + inh_ou  # ou noise
             )
         )
         return exc_rhs, inh_rhs

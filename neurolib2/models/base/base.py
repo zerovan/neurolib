@@ -81,11 +81,6 @@ class BaseModel(eqx.Module):
         term = diffrax.ODETerm(self.dynamics)
         solver = diffrax.Tsit5()
 
-        # TODO: deduplicate
-        # Instead of flattening, we should only keep unique delays
-        # (instead of [1,2,3,3,2,1,1,2,3] we should have only [1,2,3])
-        # ~self.delay_matrix.flatten().unique()
-        # requires mapping unique -> full matrix?
         delays = diffrax.Delays(
             delays=[lambda t, y, args, d=d: d for d in self.unique_delays],
             initial_discontinuities=jnp.array([0.0]),
