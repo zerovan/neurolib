@@ -28,6 +28,9 @@ class WilsonCowan(BaseModel):
     ou_theta: jax.Array
     ou_sigma: jax.Array
     ou_mu: jax.Array
+    
+    exc_ext_baseline: jax.Array
+    inh_ext_baseline: jax.Array
 
     def __init__(
         self,
@@ -55,6 +58,9 @@ class WilsonCowan(BaseModel):
         self.ou_theta = jnp.array(5.0) # decay rate (1 / timescale)
         self.ou_sigma = jnp.array(0.2) # noise intensity (std of driving Wiener process)
         self.ou_mu = jnp.array(0.0) # long-run mean
+        
+        self.exc_ext_baseline = jnp.array(0.0)
+        self.inh_ext_baseline = jnp.array(0.0)
 
     def _logistic(self, x: jnp.ndarray, a: float, theta: float) -> jnp.ndarray:
         return 1.0 / (1.0 + jnp.exp(-a * (x - theta)))
@@ -112,7 +118,7 @@ class WilsonCowan(BaseModel):
                     self.w_ee * exc  # input from within the excitatory population
                     - self.w_ie * inh  # input from the inhibitory population
                     + exc_interareal_input  # input from other nodes
-                    # TODO + exc_ext_baseline  # baseline external input (static)
+                    + self.exc_ext_baseline  # baseline external input (static)
                     # TODO + exc_ext[:, i]  # time-dependent external input
                 )
                 + exc_ou  # ou noise
@@ -127,7 +133,7 @@ class WilsonCowan(BaseModel):
                 * self._S_i(
                     self.w_ei * exc  # input from the excitatory population
                     - self.w_ii * inh  # input from within the inhibitory population
-                    # TODO + inh_ext_baseline  # baseline external input (static)
+                    + self.inh_ext_baseline  # baseline external input (static)
                     # TODO + inh_ext[:, i]  # time-dependent external input
                 )
                 + inh_ou  # ou noise

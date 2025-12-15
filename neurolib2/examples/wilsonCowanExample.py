@@ -3,7 +3,6 @@ import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from neurolib2.models.wilsonCowanModel.wilsonCowanModel import WilsonCowan
 
-
 # Example: run simulation when module executed as script
 if __name__ == "__main__":
     model = WilsonCowan.create_default(dt=0.01)
