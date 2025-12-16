@@ -163,24 +163,26 @@ class WilsonCowan(BaseModel):
 
 
     @staticmethod
-    def create_default(dt: float = 0.1, initial_state: Optional[jnp.ndarray] = None):
+    def create_default(dt: float = 0.1, fiber_length_matrix= None, fiber_count_matrix= None, initial_state: Optional[jnp.ndarray] = None):
         if initial_state is None:
             initial_state = jnp.array([0.1, 0.1])
 
-        fiber_length_matrix = jnp.array(
-            [
-                [1, 2, 3],
-                [1, 2, 3],
-                [1, 2, 3],
-            ]
-        ).astype(float)
-        fiber_count_matrix = jnp.array(
-            [
-                [1, 2, 3],
-                [1, 2, 3],
-                [1, 2, 3],
-            ]
-        ).astype(float)
+        if fiber_length_matrix is None:
+            fiber_length_matrix = jnp.array(
+                [
+                    [1, 2, 3],
+                    [1, 2, 3],
+                    [1, 2, 3],
+                ]
+            ).astype(float)
+        if fiber_count_matrix is None:
+            fiber_count_matrix = jnp.array(
+                [
+                    [1, 2, 3],
+                    [1, 2, 3],
+                    [1, 2, 3],
+                ]
+            ).astype(float)
         return WilsonCowan(
             state=initial_state, dt=dt, fiber_length_matrix=fiber_length_matrix, fiber_count_matrix=fiber_count_matrix
         )
