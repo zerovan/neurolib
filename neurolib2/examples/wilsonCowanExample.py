@@ -15,8 +15,8 @@ from neurolib2.models.wilsonCowanModel.wilsonCowanModel import WilsonCowan
 
 # Example: run simulation when module executed as script
 if __name__ == "__main__":
-    model = WilsonCowan.create_default(dt=0.01, fiber_length_matrix=ds.Dmat, fiber_count_matrix=ds.Cmat)
-    # model = WilsonCowan.create_default(dt=0.01)
+    # model = WilsonCowan.create_default(dt=0.01, fiber_length_matrix=ds.Dmat, fiber_count_matrix=ds.Cmat)
+    model = WilsonCowan.create_default(dt=0.01)
     times, states = model.simulate(2)
     model.plot(times, states)
     print(states)
