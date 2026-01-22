@@ -3,6 +3,7 @@ import jax
 import jax.numpy as jnp
 from jax import lax
 import diffrax
+import lineax
 from dataclasses import dataclass
 import equinox as eqx
 from .model_utils import compute_delay_matrix
@@ -25,6 +26,7 @@ class BaseModel(eqx.Module):
     dt: float
     t: float = 0.0
     key: jnp.ndarray
+    ts: jax.Array
 
     def __init__(
         self,
@@ -37,6 +39,7 @@ class BaseModel(eqx.Module):
     ):
         self.state = state
         self.dt = dt
+        self.ts = jnp.arange(0.0, 50.0, self.dt)
         self.fiber_count_matrix = fiber_count_matrix
         # connectivity_matrix[to, from]
         self.connectivity_matrix = jnp.fill_diagonal(self.fiber_count_matrix, 0.0, inplace=False)
@@ -47,20 +50,13 @@ class BaseModel(eqx.Module):
             assert matrix.shape[0] == matrix.shape[1]
         self.number_of_regions = self.fiber_count_matrix.shape[0]
         self.delay_matrix = compute_delay_matrix(self.fiber_length_matrix, self.signal_propagation_speed)
-        
+
         # Precompute unique delays and index mapping
         flat_delays = self.delay_matrix.flatten()
-        unique_delays, inverse_indices = jnp.unique(
-            flat_delays,
-            return_inverse=True
-        )
+        unique_delays, inverse_indices = jnp.unique(flat_delays, return_inverse=True)
         self.unique_delays = unique_delays
-        self.delay_index_matrix = inverse_indices.reshape(
-            self.number_of_regions,
-            self.number_of_regions
-        )
-        
-        
+        self.delay_index_matrix = inverse_indices.reshape(self.number_of_regions, self.number_of_regions)
+
         self.key = jax.random.PRNGKey(seed) if seed is not None else jax.random.PRNGKey(0)
 
     def reset(self, state: Optional[jnp.ndarray] = None):
@@ -68,8 +64,25 @@ class BaseModel(eqx.Module):
             self.state = state
         self.t = 0.0
 
+    def noise_term(self, ts, tau, mean, sigma):
+        # one Ornstein-Uhlenbeck process per region
+        def drift(t, y, args):
+            return -tau * (y - mean)
+
+        def diffusion(t, y, args):
+            return lineax.DiagonalLinearOperator(sigma)
+
+        brownian_motion = diffrax.VirtualBrownianTree(
+            ts[0], ts[-1], tol=1e-3, shape=(self.number_of_regions,), key=self.key
+        )
+        return diffrax.MultiTerm(diffrax.ODETerm(drift), diffrax.ControlTerm(diffusion, brownian_motion))
+
     def dynamics(self, t, y, args, *, history):
         return NotImplementedError
+
+    def get_term(self, ts):
+        # without noise by default
+        return diffrax.ODETerm(self.dynamics)
 
     def history_fn(self, t):
         return NotImplementedError
@@ -78,8 +91,8 @@ class BaseModel(eqx.Module):
         t0, t1 = 0.0, duration
         ts = jnp.arange(t0, t1, self.dt)
 
-        term = diffrax.ODETerm(self.dynamics)
-        solver = diffrax.Tsit5()
+        term = self.get_term(ts)
+        solver = diffrax.StratonovichMilstein()
 
         delays = diffrax.Delays(
             delays=[lambda t, y, args, d=d: d for d in self.unique_delays],
@@ -94,7 +107,7 @@ class BaseModel(eqx.Module):
             dt0=self.dt,
             y0=lambda t: self.history_fn(t),
             args=None,
-            saveat=diffrax.SaveAt(ts=ts, dense=True),
+            saveat=diffrax.SaveAt(ts=self.ts, dense=True),
             # stepsize_controller=diffrax.PIDController(
             #    rtol=1e-3,
             #    atol=1e-6,

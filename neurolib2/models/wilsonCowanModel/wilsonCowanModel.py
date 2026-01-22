@@ -23,11 +23,12 @@ class WilsonCowan(BaseModel):
     a_i: jax.Array
     theta_e: jax.Array
     theta_i: jax.Array
-    
-    sigma_e: jax.Array
-    sigma_i: jax.Array
-    
-    
+
+    sigma_ou: jax.Array
+    tau_ou: jax.Array
+    mean_exc_ou: jax.Array
+    mean_inh_ou: jax.Array
+
     exc_ext_baseline: jax.Array
     inh_ext_baseline: jax.Array
 
@@ -53,10 +54,12 @@ class WilsonCowan(BaseModel):
         self.a_i = jnp.array(1.0)
         self.theta_e = jnp.array(2.0)
         self.theta_i = jnp.array(2.0)
-        
-        self.sigma_e = jnp.array(0.5)
-        self.sigma_i = jnp.array(0.5)
-        
+
+        self.sigma_ou = jnp.array(0.5)
+        self.tau_ou = jnp.array(5.0)
+        self.mean_exc_ou = jnp.array(0.0)
+        self.mean_inh_ou = jnp.array(0.0)
+
         self.exc_ext_baseline = jnp.array(0.0)
         self.inh_ext_baseline = jnp.array(0.0)
 
@@ -80,14 +83,11 @@ class WilsonCowan(BaseModel):
 
         delayed_exc = history[
             self.delay_index_matrix,  # (N, N)
-            0,                        # excitatory population
-            jnp.arange(self.number_of_regions)[None, :]  # from_region
+            0,  # excitatory population
+            jnp.arange(self.number_of_regions)[None, :],  # from_region
         ]
-        
-        exc_interareal_input = jnp.sum(
-            self.connectivity_matrix * delayed_exc,
-            axis=1
-        )
+
+        exc_interareal_input = jnp.sum(self.connectivity_matrix * delayed_exc, axis=1)
 
         # one noise draw per step (shared or separate — see note below)
         key = jax.random.fold_in(self.key, jnp.floor(t / self.dt).astype(jnp.int32))
@@ -124,10 +124,16 @@ class WilsonCowan(BaseModel):
                 )
             )
         )
-        
+
         exc_rhs = exc_rhs_det + self.sigma_e * jnp.sqrt(self.dt) * noise_e
         inh_rhs = inh_rhs_det + self.sigma_i * jnp.sqrt(self.dt) * noise_i
-        return exc_rhs, inh_rhs 
+        return exc_rhs, inh_rhs
+
+    def get_term(self, ts):
+        exc_noise = self.noise_term(ts, self.tau_ou, self.mean_exc_ou, self.sigma_ou)
+        inh_noise = self.noise_term(ts, self.tau_ou, self.mean_exc_ou, self.sigma_ou)
+        noise = diffrax.MultiTerm(exc_noise, inh_noise)
+        return diffrax.MultiTerm(diffrax.ODETerm(self.dynamics), noise)
 
     def history_fn(self, t):
         zeros = jnp.zeros(self.number_of_regions, dtype=float)
@@ -150,9 +156,10 @@ class WilsonCowan(BaseModel):
         if show:
             plt.show()
 
-
     @staticmethod
-    def create_default(dt: float = 0.1, fiber_length_matrix= None, fiber_count_matrix= None, initial_state: Optional[jnp.ndarray] = None):
+    def create_default(
+        dt: float = 0.1, fiber_length_matrix=None, fiber_count_matrix=None, initial_state: Optional[jnp.ndarray] = None
+    ):
         if initial_state is None:
             # (E, I)
             initial_state = jnp.array([0.1, 0.1])

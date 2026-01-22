@@ -1,4 +1,6 @@
 import sys, os
+
+"""
 from neurolib.models.wc import WCModel
 from neurolib.utils.loadData import Dataset
 
@@ -9,6 +11,7 @@ ds = Dataset("hcp")
 # wc = WCModel(Cmat = ds.Cmat, Dmat = ds.Dmat, seed=0)
 print("fiber count matrix shape:", ds.Cmat.shape)
 print("fiber length matrix shape:", ds.Dmat.shape)
+"""
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from neurolib2.models.wilsonCowanModel.wilsonCowanModel import WilsonCowan
