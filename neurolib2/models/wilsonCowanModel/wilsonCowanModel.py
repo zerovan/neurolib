@@ -56,7 +56,7 @@ class WilsonCowan(BaseModel):
         self.theta_i = jnp.array(2.0)
         
         self.ou_theta = jnp.array(5.0) # decay rate (1 / timescale)
-        self.ou_sigma = jnp.array(0.2) # noise intensity (std of driving Wiener process)
+        self.ou_sigma = jnp.array(0.5) # noise intensity (std of driving Wiener process)
         self.ou_mu = jnp.array(0.0) # long-run mean
         
         self.exc_ext_baseline = jnp.array(0.0)
@@ -75,7 +75,7 @@ class WilsonCowan(BaseModel):
         """
         history shape: (num_delays, len(y), number_of_regions)(9,2,3)
         """
-        exc, inh = y
+        exc, inh, eta_exc, eta_inh = y
         history = jnp.array(history)
         history = jnp.nan_to_num(history, nan=0.0)  # TODO: why did we have nan's?
         # jax.debug.print("{}", history)
@@ -91,22 +91,18 @@ class WilsonCowan(BaseModel):
             axis=1
         )
 
-        step = jnp.floor(t / self.dt).astype(jnp.int32)
-        key = jax.random.fold_in(self.key, step)
-        normal_draw = jax.random.normal(key, shape=(self.number_of_regions,))
+        # one noise draw per step (shared or separate — see note below)
+        key = jax.random.fold_in(self.key, jnp.floor(t / self.dt).astype(jnp.int32))
+        noise = jax.random.normal(key, shape=(self.number_of_regions,))
+        d_eta_exc = (
+            -self.ou_theta * (eta_exc - self.ou_mu)
+            + self.ou_sigma * noise
+        )
 
-
-        # discrete-time OU approximation (stationary marginal variance used):
-        # x_{t+dt} = mu + exp(-theta*dt) * (x_t - mu) + sigma * sqrt(1 - exp(-2*theta*dt)) * N(0,1)
-        # because we don't maintain x_t as separate state here, we use the
-        # stationary increment term and set the previous value to mu. This is a
-        # compromise that yields time-varying, parameter-controlled noise.
-        alpha = jnp.exp(-self.ou_theta * self.dt)
-        std_term = jnp.sqrt(1.0 - jnp.exp(-2.0 * self.ou_theta * self.dt))
-
-
-        exc_ou = self.ou_mu * (1.0 - alpha) + self.ou_sigma * std_term * normal_draw
-        inh_ou = self.ou_mu * (1.0 - alpha) + self.ou_sigma * std_term * normal_draw
+        d_eta_inh = (
+            -self.ou_theta * (eta_inh - self.ou_mu)
+            + self.ou_sigma * noise
+        )
 
         exc_rhs = (
             1
@@ -121,7 +117,7 @@ class WilsonCowan(BaseModel):
                     + self.exc_ext_baseline  # baseline external input (static)
                     # TODO + exc_ext[:, i]  # time-dependent external input
                 )
-                + exc_ou  # ou noise
+                + eta_exc  # ou noise
             )
         )
         inh_rhs = (
@@ -136,13 +132,14 @@ class WilsonCowan(BaseModel):
                     + self.inh_ext_baseline  # baseline external input (static)
                     # TODO + inh_ext[:, i]  # time-dependent external input
                 )
-                + inh_ou  # ou noise
+                + eta_inh  # ou noise
             )
         )
-        return exc_rhs, inh_rhs
+        return exc_rhs, inh_rhs, d_eta_exc, d_eta_inh   
 
     def history_fn(self, t):
-        return jnp.zeros(self.number_of_regions, dtype=float), jnp.zeros(self.number_of_regions, dtype=float)
+        zeros = jnp.zeros(self.number_of_regions, dtype=float)
+        return zeros, zeros, zeros, zeros
 
     def plot(self, times: jnp.ndarray, states: jnp.ndarray, show: bool = True):
         num_regions = self.number_of_regions
@@ -165,7 +162,8 @@ class WilsonCowan(BaseModel):
     @staticmethod
     def create_default(dt: float = 0.1, fiber_length_matrix= None, fiber_count_matrix= None, initial_state: Optional[jnp.ndarray] = None):
         if initial_state is None:
-            initial_state = jnp.array([0.1, 0.1])
+            # (E, I, eta_E, eta_I)
+            initial_state = jnp.array([0.1, 0.1, 0.0, 0.0])
 
         if fiber_length_matrix is None:
             fiber_length_matrix = jnp.array(
