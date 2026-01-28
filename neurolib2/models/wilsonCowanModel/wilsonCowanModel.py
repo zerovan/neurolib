@@ -125,13 +125,13 @@ class WilsonCowan(BaseModel):
             )
         )
 
-        exc_rhs = exc_rhs_det + self.sigma_e * jnp.sqrt(self.dt) * noise_e
-        inh_rhs = inh_rhs_det + self.sigma_i * jnp.sqrt(self.dt) * noise_i
+        exc_rhs = exc_rhs_det + self.sigma_ou * jnp.sqrt(self.dt) * noise_e
+        inh_rhs = inh_rhs_det + self.sigma_ou * jnp.sqrt(self.dt) * noise_i
         return exc_rhs, inh_rhs
 
     def get_term(self, ts):
         exc_noise = self.noise_term(ts, self.tau_ou, self.mean_exc_ou, self.sigma_ou)
-        inh_noise = self.noise_term(ts, self.tau_ou, self.mean_exc_ou, self.sigma_ou)
+        inh_noise = self.noise_term(ts, self.tau_ou, self.mean_inh_ou, self.sigma_ou)
         noise = diffrax.MultiTerm(exc_noise, inh_noise)
         return diffrax.MultiTerm(diffrax.ODETerm(self.dynamics), noise)
 

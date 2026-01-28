@@ -1,3 +1,4 @@
+from math import tau
 from typing import Dict, Optional, Tuple, Union, Sequence
 import jax
 import jax.numpy as jnp
@@ -66,10 +67,9 @@ class BaseModel(eqx.Module):
 
     def noise_term(self, ts, tau, mean, sigma):
         # one Ornstein-Uhlenbeck process per region
-        def drift(t, y, args):
+        def drift(t, y, args, *, history=None):
             return -tau * (y - mean)
-
-        def diffusion(t, y, args):
+        def diffusion(t, y, args, *, history=None):
             return lineax.DiagonalLinearOperator(sigma)
 
         brownian_motion = diffrax.VirtualBrownianTree(
