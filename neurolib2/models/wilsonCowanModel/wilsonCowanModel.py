@@ -89,12 +89,6 @@ class WilsonCowan(BaseModel):
 
         exc_interareal_input = jnp.sum(self.connectivity_matrix * delayed_exc, axis=1)
 
-        # one noise draw per step (shared or separate — see note below)
-        key = jax.random.fold_in(self.key, jnp.floor(t / self.dt).astype(jnp.int32))
-        key_e, key_i = jax.random.split(key)
-        noise_e = jax.random.normal(key_e, (self.number_of_regions,))
-        noise_i = jax.random.normal(key_i, (self.number_of_regions,))
-
         exc_rhs_det = (
             1
             / self.tau_e
@@ -125,15 +119,14 @@ class WilsonCowan(BaseModel):
             )
         )
 
-        exc_rhs = exc_rhs_det + self.sigma_ou * jnp.sqrt(self.dt) * noise_e
-        inh_rhs = inh_rhs_det + self.sigma_ou * jnp.sqrt(self.dt) * noise_i
-        return exc_rhs, inh_rhs
+        return exc_rhs_det, inh_rhs_det
+
 
     def get_term(self, ts):
         exc_noise = self.noise_term(ts, self.tau_ou, self.mean_exc_ou, self.sigma_ou)
-        inh_noise = self.noise_term(ts, self.tau_ou, self.mean_inh_ou, self.sigma_ou)
-        noise = diffrax.MultiTerm(exc_noise, inh_noise)
-        return diffrax.MultiTerm(diffrax.ODETerm(self.dynamics), noise)
+        # inh_noise = self.noise_term(ts, self.tau_ou, self.mean_inh_ou, self.sigma_ou)
+        # noise = diffrax.MultiTerm(exc_noise, inh_noise)
+        return diffrax.MultiTerm(diffrax.ODETerm(self.dynamics), exc_noise)
 
     def history_fn(self, t):
         zeros = jnp.zeros(self.number_of_regions, dtype=float)
