@@ -4,6 +4,7 @@ from typing import Dict, Optional
 import diffrax
 from dataclasses import dataclass
 from ..base.base import BaseModel
+from ..base.lineax_utils import ScalarLinearOperator
 import matplotlib.pyplot as plt
 
 
@@ -31,6 +32,8 @@ class WilsonCowan(BaseModel):
 
     exc_ext_baseline: jax.Array
     inh_ext_baseline: jax.Array
+
+    populations_per_region = 2
 
     def __init__(
         self,
@@ -119,26 +122,54 @@ class WilsonCowan(BaseModel):
             )
         )
 
-        return exc_rhs_det, inh_rhs_det
-
+        return jnp.array((exc_rhs_det, inh_rhs_det))
 
     def get_term(self, ts):
-        exc_noise = self.noise_term(ts, self.tau_ou, self.mean_exc_ou, self.sigma_ou)
-        # inh_noise = self.noise_term(ts, self.tau_ou, self.mean_inh_ou, self.sigma_ou)
-        # noise = diffrax.MultiTerm(exc_noise, inh_noise)
-        return diffrax.MultiTerm(diffrax.ODETerm(self.dynamics), exc_noise)
+        # dynamics: function, shape (k, n)
+        # noise: MultiTerm, shape (k, n)
+        # returns: MultiTerm, shape (2k, n)
+        ou_means = jnp.array([[self.mean_exc_ou], [self.mean_inh_ou]])
+
+        def drift(t, y, args, *, history=None):
+            return -self.tau_ou * (y - ou_means)
+
+        def stacked_drift(t, y, args, *, history=None):
+            dynamics_state = y[: self.populations_per_region]
+            ou_state = y[self.populations_per_region :]
+            return jnp.vstack((self.dynamics(t, dynamics_state, args, history=history), drift(t, ou_state, args)))
+
+        def diffusion(t, y, args, *, history=None):
+            return ScalarLinearOperator(
+                self.sigma_ou,
+                (
+                    2 * self.populations_per_region,
+                    self.number_of_regions,
+                ),
+            )
+
+        brownian_motion = diffrax.VirtualBrownianTree(
+            ts[0],
+            ts[-1] + self.dt,
+            tol=1e-3,
+            shape=(
+                2 * self.populations_per_region,
+                self.number_of_regions,
+            ),
+            key=self.key,
+        )
+
+        return diffrax.MultiTerm(diffrax.ODETerm(stacked_drift), diffrax.ControlTerm(diffusion, brownian_motion))
 
     def history_fn(self, t):
-        zeros = jnp.zeros(self.number_of_regions, dtype=float)
-        return zeros, zeros
+        return jnp.zeros((2 * self.populations_per_region, self.number_of_regions), dtype=float)
 
     def plot(self, times: jnp.ndarray, states: jnp.ndarray, show: bool = True):
         num_regions = self.number_of_regions
         plt.figure(figsize=(10, 5))
 
         for r in range(num_regions):
-            plt.plot(times, states[0, :, r], label=f"E node {r}")
-            plt.plot(times, states[1, :, r], label=f"I node {r}", linestyle="--")
+            plt.plot(times, states[0, r], label=f"E node {r}")
+            plt.plot(times, states[1, r], label=f"I node {r}", linestyle="--")
 
         plt.xlabel("time (s)")
         plt.ylabel("activity")
@@ -155,7 +186,7 @@ class WilsonCowan(BaseModel):
     ):
         if initial_state is None:
             # (E, I)
-            initial_state = jnp.array([0.1, 0.1])
+            initial_state = jnp.array([[0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
 
         if fiber_length_matrix is None:
             fiber_length_matrix = jnp.array(

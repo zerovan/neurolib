@@ -21,7 +21,7 @@ if __name__ == "__main__":
     # model = WilsonCowan.create_default(dt=0.01, fiber_length_matrix=ds.Dmat, fiber_count_matrix=ds.Cmat)
     model = WilsonCowan.create_default(dt=0.01)
     times, states = model.simulate(2)
-    model.plot(times, states)
+    # model.plot(times, states[0])
     print(states)
     # grad_model = model.derivative_model(10.0, with_respect_to=["tau_e", "w_ee"])
     # print(grad_model.tau_e, grad_model.w_ee)

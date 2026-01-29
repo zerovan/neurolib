@@ -27,7 +27,6 @@ class BaseModel(eqx.Module):
     dt: float
     t: float = 0.0
     key: jnp.ndarray
-    ts: jax.Array
 
     def __init__(
         self,
@@ -40,7 +39,6 @@ class BaseModel(eqx.Module):
     ):
         self.state = state
         self.dt = dt
-        self.ts = jnp.arange(0.0, 50.0, self.dt)
         self.fiber_count_matrix = fiber_count_matrix
         # connectivity_matrix[to, from]
         self.connectivity_matrix = jnp.fill_diagonal(self.fiber_count_matrix, 0.0, inplace=False)
@@ -69,6 +67,7 @@ class BaseModel(eqx.Module):
         # one Ornstein-Uhlenbeck process per region
         def drift(t, y, args, *, history=None):
             return -tau * (y - mean)
+
         def diffusion(t, y, args, *, history=None):
             return lineax.DiagonalLinearOperator(sigma)
 
@@ -107,13 +106,13 @@ class BaseModel(eqx.Module):
             dt0=self.dt,
             y0=lambda t: self.history_fn(t),
             args=None,
-            saveat=diffrax.SaveAt(ts=self.ts, dense=True),
+            saveat=diffrax.SaveAt(ts=ts, dense=True),
             # stepsize_controller=diffrax.PIDController(
             #    rtol=1e-3,
             #    atol=1e-6,
             # ),
             delays=delays,
-            max_steps=16**5,
+            max_steps=16**4,
         )
         print(type(sol.ys), jnp.array(sol.ys).shape)
         return sol.ts, jnp.array(sol.ys)
