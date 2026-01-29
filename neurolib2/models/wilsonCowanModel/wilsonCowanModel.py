@@ -4,7 +4,7 @@ from typing import Dict, Optional
 import diffrax
 from dataclasses import dataclass
 from ..base.base import BaseModel
-from ..base.lineax_utils import ScalarLinearOperator
+from ..base.lineax_utils import OULinearOperator
 import matplotlib.pyplot as plt
 
 
@@ -139,12 +139,10 @@ class WilsonCowan(BaseModel):
             return jnp.vstack((self.dynamics(t, dynamics_state, args, history=history), drift(t, ou_state, args)))
 
         def diffusion(t, y, args, *, history=None):
-            return ScalarLinearOperator(
+            return OULinearOperator(
                 self.sigma_ou,
-                (
-                    2 * self.populations_per_region,
-                    self.number_of_regions,
-                ),
+                self.populations_per_region,
+                self.number_of_regions,
             )
 
         brownian_motion = diffrax.VirtualBrownianTree(

@@ -12,6 +12,44 @@ from jaxtyping import (
 from lineax._misc import inexact_asarray
 
 
+class OULinearOperator(lineax.AbstractLinearOperator):
+    sigma_ou: Inexact[Array, ""]
+    populations_per_region: int = eqx.field(static=True)
+    number_of_regions: int = eqx.field(static=True)
+    shape: tuple[int, ...]
+    mask: Array
+
+    def __init__(self, sigma_ou: ArrayLike, populations_per_region: int, number_of_regions: int):
+        """**Arguments:**
+
+        - `sigma_ou`: The sigma_ou value to multiply by.
+        - `shape`: (2*populations_per_region, number_of_regions)
+        """
+        self.sigma_ou = inexact_asarray(sigma_ou)
+        self.populations_per_region = populations_per_region
+        self.number_of_regions = number_of_regions
+        self.shape = (2 * populations_per_region, number_of_regions)
+        self.mask = jnp.concatenate((jnp.zeros(self.populations_per_region), jnp.ones(self.populations_per_region)))[
+            :, None
+        ]
+
+    def mv(self, vector):
+        return self.sigma_ou * self.mask * vector
+
+    def as_matrix(self):
+        size = math.prod(self.shape)
+        return self.mask * jnp.eye(size, dtype=self.scalar.dtype) * self.scalar
+
+    def transpose(self):
+        return self
+
+    def in_structure(self):
+        return jax.ShapeDtypeStruct(self.shape, self.sigma_ou.dtype)
+
+    def out_structure(self):
+        return jax.ShapeDtypeStruct(self.shape, self.sigma_ou.dtype)
+
+
 class ScalarLinearOperator(lineax.AbstractLinearOperator):
     """Represents a scalar multiplication operation on an array: y = scalar * x."""
 
@@ -89,5 +127,6 @@ class BatchedDiagonalLinearOperator(lineax.AbstractLinearOperator):
 
 @lineax.is_symmetric.register(BatchedDiagonalLinearOperator)
 @lineax.is_symmetric.register(ScalarLinearOperator)
+@lineax.is_symmetric.register(OULinearOperator)
 def _(operator):
     return True
