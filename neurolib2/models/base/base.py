@@ -63,19 +63,6 @@ class BaseModel(eqx.Module):
             self.state = state
         self.t = 0.0
 
-    def noise_term(self, ts, tau, mean, sigma):
-        # one Ornstein-Uhlenbeck process per region
-        def drift(t, y, args, *, history=None):
-            return -tau * (y - mean)
-
-        def diffusion(t, y, args, *, history=None):
-            return lineax.DiagonalLinearOperator(sigma)
-
-        brownian_motion = diffrax.VirtualBrownianTree(
-            ts[0], ts[-1], tol=1e-3, shape=(self.number_of_regions,), key=self.key
-        )
-        return diffrax.MultiTerm(diffrax.ODETerm(drift), diffrax.ControlTerm(diffusion, brownian_motion))
-
     def dynamics(self, t, y, args, *, history):
         return NotImplementedError
 

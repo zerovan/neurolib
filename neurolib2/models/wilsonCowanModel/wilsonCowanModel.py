@@ -150,7 +150,7 @@ class WilsonCowan(BaseModel):
             ts[-1] + self.dt,
             tol=1e-3,
             shape=(
-                2 * self.populations_per_region,
+                self.populations_per_region,
                 self.number_of_regions,
             ),
             key=self.key,
