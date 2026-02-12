@@ -156,7 +156,9 @@ class WilsonCowan(BaseModel):
         def stacked_drift(t, y, args, *, history=None):
             dynamics_state = y[: self.populations_per_region]
             ou_state = y[self.populations_per_region :]
-            return jnp.vstack((self.dynamics(t, dynamics_state, args, history=history), drift(t, ou_state, args)))
+            return jnp.vstack(
+                (self.dynamics(t, dynamics_state, args, history=history) + ou_state, drift(t, ou_state, args))
+            )
 
         def diffusion(t, y, args, *, history=None):
             return OULinearOperator(
@@ -222,7 +224,6 @@ class WilsonCowan(BaseModel):
 
         if show:
             plt.show()
-
 
     @staticmethod
     def create_default(
