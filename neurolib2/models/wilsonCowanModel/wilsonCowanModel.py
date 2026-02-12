@@ -39,32 +39,52 @@ class WilsonCowan(BaseModel):
         self,
         state: jnp.ndarray,
         dt: float = 0.1,
+        tau_EI: float = 1.0,
+        tau_IE: float = 2.0,
+        tau_e: float = 0.1,
+        tau_i: float = 0.5,
+        w_ee: float = 16.0,
+        w_ei: float = 12.0,
+        w_ie: float = 15.0,
+        w_ii: float = 3.0,
+        P_e: float = 1.0,
+        P_i: float = 0.0,
+        a_e: float = 1.0,
+        a_i: float = 1.0,
+        theta_e: float = 2.0,
+        theta_i: float = 2.0,
+        sigma_ou: float = 0.5,
+        tau_ou: float = 5.0,
+        mean_exc_ou: float = 0.0,
+        mean_inh_ou: float = 0.0,
+        exc_ext_baseline: float = 0.0,
+        inh_ext_baseline: float = 0.0,
         *args,
         **kwargs,
     ):
         super().__init__(state=state, dt=dt, *args, **kwargs)
-        self.tau_EI = jnp.array(1.0)
-        self.tau_IE = jnp.array(2.0)
-        self.tau_e = jnp.array(0.1)
-        self.tau_i = jnp.array(0.5)
-        self.w_ee = jnp.array(16.0)
-        self.w_ei = jnp.array(12.0)
-        self.w_ie = jnp.array(15.0)
-        self.w_ii = jnp.array(3.0)
-        self.P_e = jnp.array(1.0)
-        self.P_i = jnp.array(0.0)
-        self.a_e = jnp.array(1.0)
-        self.a_i = jnp.array(1.0)
-        self.theta_e = jnp.array(2.0)
-        self.theta_i = jnp.array(2.0)
+        self.tau_EI = jnp.array(tau_EI)
+        self.tau_IE = jnp.array(tau_IE)
+        self.tau_e = jnp.array(tau_e)
+        self.tau_i = jnp.array(tau_i)
+        self.w_ee = jnp.array(w_ee)
+        self.w_ei = jnp.array(w_ei)
+        self.w_ie = jnp.array(w_ie)
+        self.w_ii = jnp.array(w_ii)
+        self.P_e = jnp.array(P_e)
+        self.P_i = jnp.array(P_i)
+        self.a_e = jnp.array(a_e)
+        self.a_i = jnp.array(a_i)
+        self.theta_e = jnp.array(theta_e)
+        self.theta_i = jnp.array(theta_i)
 
-        self.sigma_ou = jnp.array(0.5)
-        self.tau_ou = jnp.array(5.0)
-        self.mean_exc_ou = jnp.array(0.0)
-        self.mean_inh_ou = jnp.array(0.0)
+        self.sigma_ou = jnp.array(sigma_ou)
+        self.tau_ou = jnp.array(tau_ou)
+        self.mean_exc_ou = jnp.array(mean_exc_ou)
+        self.mean_inh_ou = jnp.array(mean_inh_ou)
 
-        self.exc_ext_baseline = jnp.array(0.0)
-        self.inh_ext_baseline = jnp.array(0.0)
+        self.exc_ext_baseline = jnp.array(exc_ext_baseline)
+        self.inh_ext_baseline = jnp.array(inh_ext_baseline)
 
     def _logistic(self, x: jnp.ndarray, a: float, theta: float) -> jnp.ndarray:
         return 1.0 / (1.0 + jnp.exp(-a * (x - theta)))
@@ -162,12 +182,37 @@ class WilsonCowan(BaseModel):
         return jnp.zeros((2 * self.populations_per_region, self.number_of_regions), dtype=float)
 
     def plot(self, times: jnp.ndarray, states: jnp.ndarray, show: bool = True):
-        num_regions = self.number_of_regions
+        """
+        Plot E/I activity. Accepts states in either:
+        - time-major: (T, components, N)
+        - component-major: (components, N, T)
+        - single timepoint: (components, N)
+        Where components >= 2 (E, I, ...).
+        """
+        # normalize to (T, components, N)
+        states = jnp.asarray(states)
+        if states.ndim == 3:
+            # either (T, comp, N) or (comp, N, T)
+            if states.shape[0] == len(times):
+                states_time_major = states
+            elif states.shape[2] == len(times):
+                states_time_major = jnp.transpose(states, (2, 0, 1))
+            else:
+                raise ValueError(f"Cannot infer time axis from states with shape {states.shape}")
+        elif states.ndim == 2:
+            # single timepoint -> promote to length-1 time axis
+            states_time_major = states[None, ...]
+        else:
+            raise ValueError(f"Unsupported states shape: {states.shape}")
+
+        num_regions = states_time_major.shape[2]  # (T, components, N)
         plt.figure(figsize=(10, 5))
 
         for r in range(num_regions):
-            plt.plot(times, states[0, r], label=f"E node {r}")
-            plt.plot(times, states[1, r], label=f"I node {r}", linestyle="--")
+            plt.plot(times, states_time_major[:, 0, r], label=f"E node {r}")
+            plt.plot(times, states_time_major[:, 1, r], label=f"I node {r}", linestyle="--")
+            # plt.plot(times, states_time_major[:, 0, r] +  states_time_major[:, 2, r], label=f"E node {r}")
+            # plt.plot(times, states_time_major[:, 1, r] +  states_time_major[:, 3, r], label=f"I node {r}", linestyle="--")
 
         plt.xlabel("time (s)")
         plt.ylabel("activity")
@@ -177,6 +222,7 @@ class WilsonCowan(BaseModel):
 
         if show:
             plt.show()
+
 
     @staticmethod
     def create_default(
