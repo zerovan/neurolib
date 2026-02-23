@@ -1,0 +1,8 @@
+source .venv/bin/activate
+
+python -m unittest test_wc_deterministic.py
+
+watch -n 1 nvidia-smi
+
+export CUDA_VISIBLE_DEVICES=1
+export XLA_PYTHON_CLIENT_PREALLOCATE=false

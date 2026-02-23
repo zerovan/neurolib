@@ -221,9 +221,10 @@ class WilsonCowan(BaseModel):
         plt.title("Wilson-Cowan: all node activities")
         plt.legend()
         plt.tight_layout()
+        
 
         if show:
-            plt.show()
+            plt.savefig('wc.png', dpi=150)
 
     @staticmethod
     def create_default(

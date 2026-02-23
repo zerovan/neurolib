@@ -1,5 +1,6 @@
 from math import tau
 from typing import Dict, Optional, Tuple, Union, Sequence
+from diffrax._progress_meter import TqdmProgressMeter
 import jax
 import jax.numpy as jnp
 from jax import lax
@@ -100,6 +101,7 @@ class BaseModel(eqx.Module):
             # ),
             delays=delays,
             max_steps=16**4,
+            progress_meter=TqdmProgressMeter(),
         )
         print(type(sol.ys), jnp.array(sol.ys).shape)
         return sol.ts, jnp.array(sol.ys)

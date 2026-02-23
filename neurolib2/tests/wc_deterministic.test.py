@@ -12,13 +12,14 @@ import jax
 import jax.numpy as jnp
 import diffrax
 from scipy.interpolate import interp1d
-from neurolib.utils.collections import dotdict 
+
 
 # ------------------------------------------------------------
 # 1. Import your own Wilson‑Cowan model
 #    (Adjust the path/import to match your actual project structure)
 # ------------------------------------------------------------
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+from neurolib.utils.collections import dotdict 
 try:
     # This import expects your model to be at:
     #   neurolib2/models/wilsonCowanModel/wilsonCowanModel.py
