@@ -17,7 +17,7 @@ print("fiber count matrix shape:", ds.Cmat.shape)
 print("fiber length matrix shape:", ds.Dmat.shape)
 
 # Select first 4 regions
-indices = slice(0, 48)
+indices = slice(0, 50)
 
 C_small = ds.Cmat[indices, indices]
 D_small = ds.Dmat[indices, indices]
@@ -29,16 +29,38 @@ from neurolib2.models.wilsonCowanModel.wilsonCowanModel import WilsonCowan
 
 # Example: run simulation when module executed as script
 if __name__ == "__main__":
-    start_time = time.time()  # start timer
-    model = WilsonCowan.create_default(dt=0.01, fiber_length_matrix=D_small, fiber_count_matrix=C_small)
     # model = WilsonCowan.create_default(dt=0.01)
-    times, states = model.simulate(5.0)
-    # states.block_until_ready()
-    model.plot(times, states)
-    print(states)
+    model = WilsonCowan.create_default(
+        dt=0.01,
+        fiber_length_matrix=D_small,
+        fiber_count_matrix=C_small,
+    )
+
+    print("Model initialized.")
+    print("Enter duration (q to quit)")
     
-    end_time = time.time()  # end timer
-    elapsed = end_time - start_time
-    print(f"Simulation took {elapsed:.2f} seconds")
+    while True:
+        user_input = input("Duration: ")
+
+        if user_input.lower() == "q":
+            break
+
+        try:
+            duration = float(user_input)
+        except ValueError:
+            print("Please enter a valid number.")
+            continue
+
+        start = time.time()
+
+        times, states = model.simulate(duration)
+        model.plot(times, states)
+        states.block_until_ready()   # IMPORTANT for correct timing
+
+        end = time.time()
+
+        print(f"Run took {end - start:.2f} seconds")
+        print("States shape:", states.shape)
+    
     # grad_model = model.derivative_model(10.0, with_respect_to=["tau_e", "w_ee"])
     # print(grad_model.tau_e, grad_model.w_ee)
