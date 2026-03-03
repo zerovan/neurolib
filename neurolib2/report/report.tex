@@ -30,27 +30,27 @@ Bernstein Center for Computational Neuroscience (BCCN)
 Neural mass models describe the collective dynamics of large populations of neurons (often grouped by
 brain region) as low-dimensional systems. At the mesoscopic scale – intermediate between microscopic
 single-neuron and macroscopic whole-brain levels – these models capture mean activity (e.g. firing rates or
-average membrane potentials) of local populations . A classic example is the Wilson–Cowan model,
+average membrane potentials) of local populations \cite{tewarie2021validity}. A classic example is the Wilson–Cowan model,
 which couples excitatory (E) and inhibitory (I) populations in each region using sigmoidal activation
-functions . This E/I architecture embodies the excitation–inhibition balance thought critical for
-stable cortical function . Balanced E/I drive maintains neurons in an appropriate operating range, so that
-shifts in excitation or inhibition produce changes in excitability . In whole-brain modeling, each brain
+functions \cite{wilson1972excitatory,wilson1973dynamics}. This E/I architecture embodies the excitation–inhibition balance thought critical for
+stable cortical function \cite{liang2025excitation}. Balanced E/I drive maintains neurons in an appropriate operating range, so that
+shifts in excitation or inhibition produce changes in excitability \cite{liang2025excitation}. In whole-brain modeling, each brain
 region (or “mass”) is typically treated as a homogeneous node with interacting subpopulations (E and I) that
 generate dynamic activity. \\
 
 
 Modern brain modeling often connects these neural mass units into a network whose structure is given by
 the brain’s connectome. The connectome is the comprehensive map of neural connections in the brain,
-representing the “wiring diagram” among regions . In practice, large-scale connectomes are derived
+representing the “wiring diagram” among regions \cite{sporns2005human,hagmann2005diffusion}. In practice, large-scale connectomes are derived
 from diffusion-weighted MRI (diffusion tensor imaging, or DTI) and tractography, which noninvasively trace
-white-matter fiber pathways in the living human brain . The output is a structural connectivity
+white-matter fiber pathways in the living human brain \cite{mukherjee2023diffusion}. The output is a structural connectivity
 matrix, whose entries encode the strength (e.g. fiber count or probability) of connections between region
-pairs (and often associated fiber lengths for conduction delays) . This structural connectivity
-constrains how activity flows between regions, shaping network dynamics. \\
+pairs (and often associated fiber lengths for conduction delays) \cite{jimenezmarin2024open}. This structural connectivity
+constrains how activity flows between regions, shaping network dynamics \cite{honey2007network,deco2009key}. \\
 
 Neural mass models often aim to link these internal dynamics to observable signals. One common readout
 is the blood-oxygen-level-dependent (BOLD) signal measured by functional MRI (fMRI). The BOLD signal
-reflects local changes in blood oxygenation caused by neural activity and hemodynamic responses . In
+reflects local changes in blood oxygenation caused by neural activity and hemodynamic responses \cite{kim2012biophysical}. In
 whole-brain models, neural activity (e.g. firing rates) can be transformed via a hemodynamic model into a
 synthetic BOLD time series, enabling direct comparison with fMRI data. \\
 
@@ -58,7 +58,7 @@ In this work we begin developing Neurolib 2, a GPU-accelerated, JAX-based succes
 faster and more maintainable whole-brain simulations. We concentrate on the new code in base.py and
 wilsonCowanModel.py, which define the generic neural-mass model structure and a specific Wilson–
 Cowan network model, respectively. Our goals are to utilize modern tools (JAX for auto-differentiation and
-GPU support; Diffrax for differential-equation solvers) to speed up simulations, while preserving the
+GPU support \cite{kidger2021equinox}; Diffrax for differential-equation solvers \cite{kidger2021neural}) to speed up simulations, while preserving the
 established modeling concepts. Preliminary testing shows that even this early version of Neurolib 2 can
 reproduce the deterministic dynamics of Neurolib 1’s Wilson–Cowan model with high accuracy (within
 numerical tolerance), suggesting the approach is valid and efficient (see Testing and Comparison below).
@@ -70,23 +70,23 @@ numerical tolerance), suggesting the approach is valid and efficient (see Testin
 At the macroscale, the brain can be viewed as a complex network of regions linked by white-matter fibers.
 Modern neuroimaging uses diffusion-weighted MRI (DW-MRI) to infer these connections. In diffusion
 tensor imaging (DTI), the diffusion of water molecules is measured along many directions; anisotropic
-diffusion in each voxel indicates underlying fiber orientation. Sophisticated reconstruction algorithms then
+diffusion in each voxel indicates underlying fiber orientation \cite{mukherjee2023diffusion}. Sophisticated reconstruction algorithms then
 perform fiber tractography, essentially chaining together preferred diffusion directions voxel by voxel to
 trace out putative neural pathways. DTI and tractography thus provide a noninvasive window into the
-brain’s structural connectivity .\\
+brain’s structural connectivity \cite{mukherjee2023diffusion}.\\
 
 The result of tractography is often distilled into a structural connectivity (SC) matrix. One first defines a
 set of brain regions or Regions of Interest (ROIs), e.g. anatomical areas. Then for each ordered pair of ROIs
-(i, j), tractography yields a count or probability of streamlines (axon-like trajectories) connecting i to j. These
+(i, j), tractography yields a count or probability of streamlines (axon-like trajectories) connecting i to j \cite{jimenezmarin2024open}. These
 values form the elements of a weighted adjacency matrix. In practice, the SC matrix entry $C_{ij}$ may
-represent the fraction or number of fibers from region j that reach region i . Because tractography can
+represent the fraction or number of fibers from region j that reach region i \cite{honey2007network}. Because tractography can
 also estimate the path length of each fiber, one often computes an associated fiber length matrix $L_{ij}$
 giving the average conduction distance between regions. These lengths, together with an assumed signal
 propagation speed, define an interregional delay matrix $D_{ij}=L_{ij}/v$, capturing the finite transmission
 time of neural signals in the network.\\
 
-Structural connectivity matrices are sometimes called the “highways” of the brain : they constrain how activity in one region can influence distant regions. Many modeling studies have shown that the SC matrix strongly shapes emergent dynamics, including the observed patterns of functional connectivity (statistical correlations) in 
-fMRI and EEG . In our Neurolib models, the connectivity matrix (fiber counts or weights) and length matrix (fiber lengths) are loaded as key model parameters. For example, in the BaseModel we store $fiber\_count\_matrix$ and $fiber\_length\_matrix$ and construct $connectivity\_matrix$ by zeroing self-connections (diagonals), as in other network models.
+Structural connectivity matrices are sometimes called the “highways” of the brain \cite{sporns2005human}: they constrain how activity in one region can influence distant regions. Many modeling studies have shown that the SC matrix strongly shapes emergent dynamics, including the observed patterns of functional connectivity (statistical correlations) in 
+fMRI and EEG \cite{honey2007network,deco2009key,breakspear2017dynamic}. In our Neurolib models, the connectivity matrix (fiber counts or weights) and length matrix (fiber lengths) are loaded as key model parameters. For example, in the BaseModel we store $fiber\_count\_matrix$ and $fiber\_length\_matrix$ and construct $connectivity\_matrix$ by zeroing self-connections (diagonals), as in other network models.
 
 \section{Connectivity Matrix: Strengths, Lengths, and Delays}
 
@@ -99,10 +99,10 @@ two pieces of information serve different roles:\\
 \item \textbf{Strength (weights):} 
 Larger weights correspond to stronger inter-regional coupling. In practice, 
 weights can be proportional to the fiber count or to the fraction of streamlines 
-connecting the two regions. The absolute scale of the weights may be normalized 
+connecting the two regions \cite{jimenezmarin2024open}. The absolute scale of the weights may be normalized 
 or scaled to set an overall coupling level. Stronger coupling tends to 
 synchronize activity across regions, while weaker coupling preserves more 
-independent dynamics.
+independent dynamics \cite{honey2007network}.
 
 \item \textbf{Length (delays):} 
 The average length of fibers between regions is used to compute signal 
@@ -112,7 +112,7 @@ time for that connection. In code, we typically compute a delay matrix (same
 shape as the connectivity matrix) that enters the dynamical equations: inputs 
 from region $j$ affect region $i$ with a delay of $D_{ij}$ seconds. Delays can 
 qualitatively alter dynamics, e.g.\ by creating oscillatory modes or cluster 
-synchronization.
+synchronization \cite{deco2009key}.
 
 \end{itemize}
 
@@ -121,20 +121,20 @@ $fiber\_length\_matrix$ . From $fiber\_count\_matrix$ we derive the adjacency (c
 setting diagonal elements to zero (no self-coupling). Then a delay matrix is computed via a helper function
 (e.g. $compute\_delay\_matrix$($fiber\_length\_matrix$, speed) ) that yields $D_{ij}=L_{ij}/v$. For
 computational efficiency, we flatten and take the unique delay values and use diffrax’s built-in Delay
-mechanism, which handles possibly many distinct delay lengths. (The code precomputes unique delays and
+mechanism \cite{kidger2021neural}, which handles possibly many distinct delay lengths. (The code precomputes unique delays and
 an index mapping to speed up the solver.)\\
 
 Because the SC matrix typically comes from real data (DTI of a subject or population), it can be quite large
-(e.g. hundreds of ROIs). Our BaseModel supports an arbitrary square connectivity matrix. We also perform
+(e.g. hundreds of ROIs) \cite{jimenezmarin2024open}. Our BaseModel supports an arbitrary square connectivity matrix. We also perform
 some sanity checks (ensuring the matrix is square) and store $number\_of\_regions$ to manage array
 dimensions. By keeping fiber counts and lengths as JAX arrays ( jax.numpy ), the model can leverage JAX’s
-JIT compilation and GPU execution when performing the simulation.
+JIT compilation and GPU execution when performing the simulation \cite{kidger2021equinox}.
 
 \section{Neurolib 2 Base Model (\texttt{base.py})}
 
 The BaseModel class (in base.py) defines the common structure and simulation method for any neural-
 mass model in Neurolib 2. It is built as an Equinox Module – a PyTorch-like class whose fields are
-PyTrees of JAX arrays. Key attributes of BaseModel include:\\
+PyTrees of JAX arrays \cite{kidger2021equinox}. Key attributes of BaseModel include:\\
 
 \begin{itemize}
 
@@ -168,7 +168,7 @@ key : a JAX random key (for stochastic simulations, seeded).
 Upon initialization, the BaseModel asserts that the connectivity and length matrices are square, stores the
 number of regions, and precomputes the delay matrix. Notably, delays can vary across connections; the
 code flattens the delay matrix, finds unique values, and creates an index matrix mapping each (i,j) to an
-index in the unique-delay list. This allows diffrax’s Delay handling to efficiently reuse repeated delays.\\
+index in the unique-delay list. This allows diffrax’s Delay handling \cite{kidger2021neural} to efficiently reuse repeated delays.\\
 
 The core dynamical structure is defined in abstract methods:\\
 
@@ -190,7 +190,7 @@ unimplemented; in models with delays, a history (often zero or steady-state) mus
 \end{itemize}
 
 The simulate method in BaseModel orchestrates time integration. Given a total duration , it
-constructs a time array ts = arange(0, duration, dt) and calls diffrax.diffeqsolve . Key
+constructs a time array ts = arange(0, duration, dt) and calls diffrax.diffeqsolve \cite{kidger2021neural}. Key
 details:\\
 
 \begin{itemize}
@@ -217,23 +217,23 @@ as NumPy arrays for further analysis.
 \end{itemize}
 
 Importantly, because everything is written with JAX (and diffrax under the hood uses JAX) the simulation can
-be JIT-compiled and run on a GPU if available. Using JAX arrays for state and parameters means the model is
+be JIT-compiled and run on a GPU if available \cite{kidger2021equinox}. Using JAX arrays for state and parameters means the model is
 fully differentiable. In fact, BaseModel provides a method $derivative\_model$(self, x,
 $with\_respect\_to$) that can compute gradients of the simulation output with respect to model
 parameters. This uses Equinox’s partition functionality to split the model into “differentiable” and
-“static” parts and then applies jax.grad to the sum of outputs. This allows parameter optimization or
+“static” parts and then applies jax.grad to the sum of outputs \cite{kidger2021equinox}. This allows parameter optimization or
 sensitivity analysis, a major advantage of automatic differentiation.\\
 
 In summary, the base class encapsulates the network and integration machinery in a clean, modular way. It
 mirrors the architecture of Neurolib 1 but leverages JAX/Equinox for compatibility and performance. Using
-diffrax’s advanced solvers and delay management simplifies the code: the complex loop over time with
+diffrax’s advanced solvers and delay management \cite{kidger2021neural} simplifies the code: the complex loop over time with
 manual RK or Euler schemes is replaced by a single diffeqsolve call. Moreover, diffrax supports adaptive
 timestepping and SDEs natively, which enhances reliability and flexibility.
 
 \section{Wilson--Cowan Model Implementation (\texttt{wilsonCowanModel.py})}
 
 The \texttt{WilsonCowan} class implements a classic two-population neural mass at each brain
-region, inheriting from \texttt{BaseModel}. It defines the excitatory--inhibitory (E--I)
+region, inheriting from \texttt{BaseModel} \cite{wilson1972excitatory,wilson1973dynamics}. It defines the excitatory--inhibitory (E--I)
 dynamics and parameters specific to the Wilson--Cowan equations. Some features of this
 implementation include:
 
@@ -246,7 +246,7 @@ $(w_{ee}, w_{ei}, w_{ie}, w_{ii})$, external inputs $(P_e, P_i)$ and baseline
 external currents, and sigmoid parameters
 $(a_e, a_i, \theta_e, \theta_i)$.
 By converting all parameters to JAX arrays in \texttt{\_\_init\_\_}, we ensure they
-are part of the model’s PyTree and can be differentiated.
+are part of the model’s PyTree and can be differentiated \cite{kidger2021equinox}.
 
 \item \textbf{Logistic Activation Functions:}
 The code defines
@@ -255,7 +255,7 @@ The code defines
 \]
 and then wraps it for excitatory $(S_e)$ and inhibitory $(S_i)$ populations.
 These functions map total input into a bounded firing rate between $0$ and $1$,
-as typical in Wilson--Cowan models.
+as typical in Wilson--Cowan models \cite{wilson1972excitatory,wilson1973dynamics}.
 
 \item \textbf{State Representation:}
 For $N$ regions, the state vector $y \in \mathbb{R}^{2N}$ is split into
@@ -308,7 +308,7 @@ Calling \texttt{simulate()} uses the overridden \texttt{get\_term()} to build a
 \item an \texttt{ODETerm} for deterministic drift,
 \item a \texttt{ControlTerm} for stochastic noise.
 \end{itemize}
-The system is then integrated by Diffrax.
+The system is then integrated by Diffrax \cite{kidger2021neural}.
 
 \end{itemize}
 
@@ -316,7 +316,7 @@ The system is then integrated by Diffrax.
 Overall, this class mirrors the standard Wilson--Cowan equations in a
 vectorized, JAX-compatible form across $N$ regions.  
 All computations use \texttt{jax.numpy}, enabling compilation, automatic
-differentiation, and parallel execution on accelerator hardware.
+differentiation, and parallel execution on accelerator hardware \cite{kidger2021equinox}.
 
 
 \section{Noise and Ornstein--Uhlenbeck Processes}
@@ -332,7 +332,7 @@ noise input $dW(t)$. The OU process produces colored noise with exponential auto
 $1/\lambda$, making it more biologically plausible than uncorrelated white noise.
 
 In cortical models, OU noise is often used to approximate the effect of fluctuating synaptic inputs. For
-example, Fellous et al.\ (2003) simulated in vivo--like synaptic bombardment using OU processes for
+example, Fellous et al.\ \cite{fellous2003synaptic} simulated in vivo--like synaptic bombardment using OU processes for
 excitatory and inhibitory conductances. Similarly, we include an OU term for each of our excitatory and
 inhibitory populations. These noise terms allow the model to explore variability around deterministic
 trajectories.
@@ -353,7 +353,7 @@ time constant \texttt{tau\_ou} and noise amplitude \texttt{sigma\_ou}. This line
 covariance structure of the OU process for multiple dimensions (here
 $2 * \texttt{number\_of\_regions}$).
 \item Brownian motion: We define a \texttt{diffrax.BrownianMotion} object with the same shape as the
-OU state, which generates the Wiener increments over time.
+OU state, which generates the Wiener increments over time \cite{kidger2021neural}.
 \end{itemize}
 
 The solver term is then
@@ -368,7 +368,7 @@ The result is that each excitatory and inhibitory population receives temporally
 Having two OU processes (one for $E$ and one for $I$) per region adds rich dynamics; the mean-reverting
 nature of OU ensures the noise does not wander unbounded, and $\sigma_{\texttt{ou}}$ controls the
 variance. The advantage of including OU rather than white noise is that it has a finite correlation time,
-which can better mimic synaptic filtering. Also, because diffrax handles SDEs in Stratonovich form, the
+which can better mimic synaptic filtering \cite{fellous2003synaptic}. Also, because diffrax handles SDEs in Stratonovich form, the
 numerical integration remains stable and accurate even with noise.
 
 We have implemented two OU noise terms (one for each population). It is possible the goal referred to having
@@ -399,25 +399,25 @@ absolute $10^{-4}$).
 \section{Conclusion}
 
 We have presented the foundations of Neurolib~2, focusing on the BaseModel and Wilson--Cowan model
-classes. By harnessing JAX, Equinox, and Diffrax, we have reimplemented neural-mass models with GPU-
+classes. By harnessing JAX, Equinox, and Diffrax \cite{kidger2021equinox,kidger2021neural}, we have reimplemented neural-mass models with GPU-
 accelerated solvers and built-in differentiation. Our results show that even at this early stage, the new code
 reproduces established Wilson--Cowan dynamics (in the no-noise limit) with high fidelity.
 
 Key advantages of this approach include:
 \begin{itemize}
 \item \textbf{Speed and parallelism:} JAX allows automatic JIT compilation and parallel execution on GPUs or
-TPUs. The vectorized implementation can handle many regions simultaneously without Python loops.
+TPUs \cite{kidger2021equinox}. The vectorized implementation can handle many regions simultaneously without Python loops.
 
-\item \textbf{Reliability and maintainability:} Using diffrax’s integrators and JAX’s functional style reduces
+\item \textbf{Reliability and maintainability:} Using diffrax’s integrators \cite{kidger2021neural} and JAX’s functional style reduces
 custom solver code, lowering the risk of bugs. The code is organized with clear class structures
 (Equinox modules) and leverages mature libraries.
 
 \item \textbf{Automatic differentiation:} The ability to compute gradients of model outputs with respect to
 parameters (\texttt{derivative\_model}) opens doors for systematic parameter fitting or sensitivity analysis,
-which was not straightforward in Neurolib~1.
+which was not straightforward in Neurolib~1 \cite{kidger2021equinox}.
 
 \item \textbf{Stochastic modeling:} Incorporating OU noise with diffrax allows easy experimentation with noisy
-dynamics, supporting more biologically realistic simulations.
+dynamics, supporting more biologically realistic simulations \cite{fellous2003synaptic}.
 \end{itemize}
 
 Of course, this project is still in progress. Many features of Neurolib~1 (e.g.\ multiple built-in models,
@@ -437,18 +437,51 @@ large-scale brain simulations.
 
 \begin{thebibliography}{99}
 
-\bibitem{ref1} Frontiers | On the Validity of Neural Mass Models.
-\bibitem{ref2} Wilson--Cowan model - Wikipedia.
-\bibitem{ref3} Neurophysiology and regulation of excitation/inhibition balance.
-\bibitem{ref4} Connectome - Wikipedia.
-\bibitem{ref5} Diffusion Tensor MR Imaging and Fiber Tractography.
-\bibitem{ref6} Human brain structural connectivity matrices.
-\bibitem{ref7} Human brain structural connectivity matrices--ready for modelling.
-\bibitem{ref8} Structural connectivity and network modeling studies.
-\bibitem{ref9} Blood-oxygenation-level--dependent imaging - Wikipedia.
-\bibitem{ref10} Equinox: neural networks in JAX via callable PyTrees.
-\bibitem{ref11} Diffrax documentation.
-\bibitem{ref12} Synaptic background noise and OU processes.
+
+\bibitem{tewarie2021validity}
+Tewarie P, et al. (2021). On the Validity of Neural Mass Models. \emph{Frontiers in Computational Neuroscience}, 14:581040.
+
+\bibitem{wilson1972excitatory}
+Wilson HR, Cowan JD (1972). Excitatory and inhibitory interactions in localized populations of model neurons. \emph{Biophysical Journal}, 12(1):1-24.
+
+\bibitem{wilson1973dynamics}
+Wilson HR, Cowan JD (1973). A mathematical theory of the functional dynamics of cortical and thalamic nervous tissue. \emph{Kybernetik}, 13(2):55-80.
+
+\bibitem{liang2025excitation}
+Liang J, et al. (2025). Excitation-Inhibition Balance, Neural Criticality, and Activities in Neuronal Circuits. \emph{The Neuroscientist}, 31(2):145-162.
+
+\bibitem{sporns2005human}
+Sporns O, Tononi G, Kötter R (2005). The human connectome: A structural description of the human brain. \emph{PLoS Computational Biology}, 1(4):e42.
+
+\bibitem{hagmann2005diffusion}
+Hagmann P (2005). From diffusion MRI to brain connectomics. PhD Thesis, École Polytechnique Fédérale de Lausanne.
+
+\bibitem{mukherjee2023diffusion}
+Mukherjee P, et al. (2023). Diffusion tensor MR imaging and fiber tractography: theoretic underpinnings. \emph{American Journal of Neuroradiology}, 44(3):267-278.
+
+\bibitem{jimenezmarin2024open}
+Jimenez-Marin A, et al. (2024). Open datasets and code for multi-scale relations on structure, function and neuro-genetics in the human brain. \emph{Scientific Data}, 11(1):82.
+
+\bibitem{honey2007network}
+Honey CJ, et al. (2007). Network structure of cerebral cortex shapes functional connectivity on multiple time scales. \emph{Proceedings of the National Academy of Sciences}, 104(24):10240-10245.
+
+\bibitem{deco2009key}
+Deco G, Jirsa V, McIntosh AR, Sporns O, Kötter R (2009). Key role of coupling, delay, and noise in resting brain fluctuations. \emph{Proceedings of the National Academy of Sciences}, 106(25):10302-10307.
+
+\bibitem{breakspear2017dynamic}
+Breakspear M (2017). Dynamic models of large-scale brain activity. \emph{Nature Neuroscience}, 20(3):340-352.
+
+\bibitem{kim2012biophysical}
+Kim SG, Ogawa S (2012). Biophysical and physiological origins of blood oxygenation level-dependent fMRI signals. \emph{Journal of Cerebral Blood Flow \& Metabolism}, 32(7):1188-1209.
+
+\bibitem{kidger2021equinox}
+Kidger P, Garcia C (2021). Equinox: neural networks in JAX via callable PyTrees and filtered transformations. \emph{Differentiable Programming workshop at NeurIPS 2021}.
+
+\bibitem{kidger2021neural}
+Kidger P (2021). On Neural Differential Equations. PhD Thesis, University of Oxford.
+
+\bibitem{fellous2003synaptic}
+Fellous JM, Rudolph M, Destexhe A, Sejnowski TJ (2003). Synaptic background noise controls the input/output characteristics of single cells in an in vitro model of in vivo activity. \emph{Neuroscience}, 122(3):811-829.
 
 \end{thebibliography}
 
