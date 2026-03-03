@@ -27,6 +27,7 @@ class BaseModel(eqx.Module):
     dt: float
     t: float = 0.0
     key: jnp.ndarray
+    simulation_params: dict
 
     def __init__(
         self,
@@ -52,11 +53,25 @@ class BaseModel(eqx.Module):
 
         # Precompute unique delays and index mapping
         flat_delays = self.delay_matrix.flatten()
-        unique_delays, inverse_indices = jnp.unique(flat_delays, return_inverse=True)
+        unique_delays, inverse_indices = jnp.unique(self.discretize_delays(flat_delays), return_inverse=True)
         self.unique_delays = unique_delays
         self.delay_index_matrix = inverse_indices.reshape(self.number_of_regions, self.number_of_regions)
 
         self.key = jax.random.PRNGKey(seed) if seed is not None else jax.random.PRNGKey(0)
+
+        self.simulation_params = {
+            "solver": diffrax.Heun(),
+            "dt0": self.dt,
+            "stepsize_controller": diffrax.ConstantStepSize(),
+            "max_steps": 16**4,
+            "args": None,
+        }
+
+    def discretize_delays(self, delays, precision=0.5):
+        # discretize / round delays
+        # in most cases, steps of 0.5 ms are sufficient
+        precision = max(precision, self.dt)
+        return (delays / precision).round(0) * precision
 
     def reset(self, state: Optional[jnp.ndarray] = None):
         if state is not None:
@@ -73,12 +88,12 @@ class BaseModel(eqx.Module):
     def history_fn(self, t):
         return NotImplementedError
 
+    @eqx.filter_jit
     def simulate(self, duration=50.0):
         t0, t1 = 0.0, duration
         ts = jnp.arange(t0, t1, self.dt)
 
         term = self.get_term(ts)
-        solver = diffrax.StratonovichMilstein()
 
         delays = diffrax.Delays(
             delays=[lambda t, y, args, d=d: d for d in self.unique_delays],
@@ -87,19 +102,12 @@ class BaseModel(eqx.Module):
 
         sol = diffrax.diffeqsolve(
             term,
-            solver,
+            **self.simulation_params,
             t0=t0,
             t1=t1,
-            dt0=self.dt,
             y0=lambda t: self.history_fn(t),
-            args=None,
             saveat=diffrax.SaveAt(ts=ts, dense=True),
-            # stepsize_controller=diffrax.PIDController(
-            #    rtol=1e-3,
-            #    atol=1e-6,
-            # ),
             delays=delays,
-            max_steps=16**4,
         )
         print(type(sol.ys), jnp.array(sol.ys).shape)
         return sol.ts, jnp.array(sol.ys)
