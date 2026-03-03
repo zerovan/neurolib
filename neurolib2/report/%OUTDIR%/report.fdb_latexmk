@@ -1,5 +1,7 @@
 # Fdb version 4
-["pdflatex"] 1771491752.79212 "/home/zerovan/Desktop/projects/neurolib/neurolib2/report/report.tex" "report.pdf" "report" 1771491753.34404 0
+["pdflatex"] 1772550510.33629 "/home/zerovan/Desktop/projects/neurolib/neurolib2/report/report.tex" "report.pdf" "report" 1772550510.8902 0
+  "%OUTDIR%/report.aux" 1772550510.8078 1484 f01ff67d7fdb0b0106ae8509ff4ac7a0 "pdflatex"
+  "%OUTDIR%/report.out" 1772550510.8078 1952 491a01f0e7676cb0cb47e9502cafb8a5 "pdflatex"
   "/etc/texmf/web2c/texmf.cnf" 1740689027.79779 475 c0e671620eb5563b2130f56340a5fde8 ""
   "/home/zerovan/Desktop/projects/neurolib/neurolib2/report/report.tex" 1771491752.58827 24301 8fb5baac29b2066c467f49632aed2716 ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
@@ -120,12 +122,10 @@
   "/usr/share/texmf/web2c/texmf.cnf" 1707919699 40399 f2c302f7d2af602abb742093540a5834 ""
   "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1743083411.37837 5472669 54eaf61a88b6b7896ebd0dac973cb29c ""
   "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1743083504 8214373 018e8fc26a56a882249f22143470e2a7 ""
-  "report.aux" 1771491753.26049 1484 f01ff67d7fdb0b0106ae8509ff4ac7a0 "pdflatex"
-  "report.out" 1771491753.26149 1952 491a01f0e7676cb0cb47e9502cafb8a5 "pdflatex"
   "report.tex" 1771491752.58827 24301 8fb5baac29b2066c467f49632aed2716 ""
   (generated)
-  "report.aux"
-  "report.log"
-  "report.out"
+  "%OUTDIR%/report.aux"
+  "%OUTDIR%/report.log"
+  "%OUTDIR%/report.out"
   "report.pdf"
   (rewritten before read)
