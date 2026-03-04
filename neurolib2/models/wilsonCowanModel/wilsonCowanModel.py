@@ -99,7 +99,9 @@ class WilsonCowan(BaseModel):
         """
         history shape: (num_delays, len(y), number_of_regions)(9,2,3)
         """
-        exc, inh = y
+        exc, inh = y[: self.populations_per_region]
+        ou_state = y[self.populations_per_region :]
+        ou_exc, ou_inh = ou_state
         history = jnp.array(history)
         history = jnp.nan_to_num(history, nan=0.0)  # TODO: why did we have nan's?
         # jax.debug.print("{}", history)
@@ -123,6 +125,7 @@ class WilsonCowan(BaseModel):
                     - self.w_ie * inh  # input from the inhibitory population
                     + exc_interareal_input  # input from other nodes
                     + self.exc_ext_baseline  # baseline external input (static)
+                    + ou_exc
                     # TODO + exc_ext[:, i]  # time-dependent external input
                 )
             )
@@ -137,28 +140,21 @@ class WilsonCowan(BaseModel):
                     self.w_ei * exc  # input from the excitatory population
                     - self.w_ii * inh  # input from within the inhibitory population
                     + self.inh_ext_baseline  # baseline external input (static)
+                    + ou_inh
                     # TODO + inh_ext[:, i]  # time-dependent external input
                 )
             )
         )
 
-        return jnp.array((exc_rhs_det, inh_rhs_det))
+        ou_means = jnp.array([[self.mean_exc_ou], [self.mean_inh_ou]])
+        ou_rhs = -self.tau_ou * (ou_state - ou_means)
+
+        return jnp.array((exc_rhs_det, inh_rhs_det, *ou_rhs))
 
     def get_term(self, ts):
-        # dynamics: function, shape (k, n)
+        # dynamics: function, shape (2k, n)
         # noise: MultiTerm, shape (k, n)
         # returns: MultiTerm, shape (2k, n)
-        ou_means = jnp.array([[self.mean_exc_ou], [self.mean_inh_ou]])
-
-        def drift(t, y, args, *, history=None):
-            return -self.tau_ou * (y - ou_means)
-
-        def stacked_drift(t, y, args, *, history=None):
-            dynamics_state = y[: self.populations_per_region]
-            ou_state = y[self.populations_per_region :]
-            return jnp.vstack(
-                (self.dynamics(t, dynamics_state, args, history=history) + ou_state, drift(t, ou_state, args))
-            )
 
         def diffusion(t, y, args, *, history=None):
             return OULinearOperator(
@@ -179,7 +175,7 @@ class WilsonCowan(BaseModel):
             key=self.key,
         )
 
-        return diffrax.MultiTerm(diffrax.ODETerm(stacked_drift), diffrax.ControlTerm(diffusion, brownian_motion))
+        return diffrax.MultiTerm(diffrax.ODETerm(self.dynamics), diffrax.ControlTerm(diffusion, brownian_motion))
 
     def history_fn(self, t):
         return jnp.zeros((2 * self.populations_per_region, self.number_of_regions), dtype=float)
