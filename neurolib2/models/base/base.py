@@ -13,7 +13,7 @@ from .model_utils import compute_delay_matrix
 class BaseModel(eqx.Module):
 
     state: jnp.ndarray
-    fiber_count_matrix: jnp.ndarray
+    fiber_density_matrix: jnp.ndarray
     connectivity_matrix: jnp.ndarray
     fiber_length_matrix: jnp.ndarray
     signal_propagation_speed: float
@@ -33,22 +33,22 @@ class BaseModel(eqx.Module):
         self,
         state,
         dt=0.1,
-        fiber_count_matrix=jnp.ones((1, 1)),
+        fiber_density_matrix=jnp.ones((1, 1)),
         fiber_length_matrix=jnp.zeros((1, 1)),
         signal_propagation_speed: float = 20.0,
         seed=42,
     ):
         self.state = state
         self.dt = dt
-        self.fiber_count_matrix = fiber_count_matrix
+        self.fiber_density_matrix = fiber_density_matrix
         # connectivity_matrix[to, from]
-        self.connectivity_matrix = jnp.fill_diagonal(self.fiber_count_matrix, 0.0, inplace=False)
+        self.connectivity_matrix = jnp.fill_diagonal(self.fiber_density_matrix, 0.0, inplace=False)
         self.fiber_length_matrix = fiber_length_matrix
         self.signal_propagation_speed = signal_propagation_speed
-        for matrix in (self.fiber_length_matrix, self.fiber_count_matrix):
+        for matrix in (self.fiber_length_matrix, self.fiber_density_matrix):
             assert len(matrix.shape) == 2
             assert matrix.shape[0] == matrix.shape[1]
-        self.number_of_regions = self.fiber_count_matrix.shape[0]
+        self.number_of_regions = self.fiber_density_matrix.shape[0]
         self.delay_matrix = compute_delay_matrix(self.fiber_length_matrix, self.signal_propagation_speed)
 
         # Precompute unique delays and index mapping

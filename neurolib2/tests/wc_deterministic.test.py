@@ -12,7 +12,7 @@ import jax
 import jax.numpy as jnp
 import diffrax
 from scipy.interpolate import interp1d
-from neurolib.utils.collections import dotdict 
+from neurolib.utils.collections import dotdict
 
 # ------------------------------------------------------------
 # 1. Import your own Wilson‑Cowan model
@@ -37,6 +37,7 @@ except ImportError:
 # ------------------------------------------------------------
 try:
     from neurolib.models.wc import WCModel
+
     NEUROLIB_AVAILABLE = True
 except ImportError:
     NEUROLIB_AVAILABLE = False
@@ -50,20 +51,20 @@ def test_no_delay_no_noise_vs_neurolib():
         print("SKIPPED: neurolib not available")
         return
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("Deterministic Wilson‑Cowan validation (no delays, no noise)")
-    print("="*70)
+    print("=" * 70)
 
     # ==================================================================
     # 1. Shared simulation settings
     # ==================================================================
-    dt = 0.001               # time step [seconds]
-    duration = 5.0           # total simulation time [seconds]
+    dt = 0.001  # time step [seconds]
+    duration = 5.0  # total simulation time [seconds]
     print(f"\nSimulation: dt = {dt} s, duration = {duration} s")
     print(f"Steps: {int(duration/dt)+1}")
 
     # Single node → no coupling
-    fiber_count_matrix = jnp.zeros((1, 1), dtype=float)
+    fiber_density_matrix = jnp.zeros((1, 1), dtype=float)
     fiber_length_matrix = jnp.zeros((1, 1), dtype=float)
 
     # Initial state for your model: shape (4, 1) → [E, I, OU_exc, OU_inh]
@@ -73,8 +74,8 @@ def test_no_delay_no_noise_vs_neurolib():
     # ==================================================================
     # 2. Shared model parameters (typical neurolib values)
     # ==================================================================
-    tau_e = 0.01    # 10 ms
-    tau_i = 0.02    # 20 ms
+    tau_e = 0.01  # 10 ms
+    tau_i = 0.02  # 20 ms
     w_ee = 2.0
     w_ei = 2.0
     w_ie = 1.8
@@ -94,46 +95,41 @@ def test_no_delay_no_noise_vs_neurolib():
 
     params = {
         # ----- Runtime -----
-        'dt': dt,
-        'duration': duration,
-        'seed': 42,
-
+        "dt": dt,
+        "duration": duration,
+        "seed": 42,
         # ----- Connectivity (single node) -----
-        'Cmat': np.zeros((1, 1)),
-        'lengthMat': np.zeros((1, 1)),
-        'signalV': 20.0,
-        'K_gl': 0.6,
-        'N': 1,
-
+        "Cmat": np.zeros((1, 1)),
+        "lengthMat": np.zeros((1, 1)),
+        "signalV": 20.0,
+        "K_gl": 0.6,
+        "N": 1,
         # ----- Local node parameters (neurolib names) -----
-        'tau_exc': tau_e,
-        'tau_inh': tau_i,
-        'c_excexc': w_ee,
-        'c_excinh': w_ei,
-        'c_inhexc': w_ie,
-        'c_inhinh': w_ii,
-        'a_exc': a_e,
-        'a_inh': a_i,
-        'mu_exc': theta_e,
-        'mu_inh': theta_i,
-        'exc_ext_baseline': baseline_e,
-        'inh_ext_baseline': baseline_i,
-
+        "tau_exc": tau_e,
+        "tau_inh": tau_i,
+        "c_excexc": w_ee,
+        "c_excinh": w_ei,
+        "c_inhexc": w_ie,
+        "c_inhinh": w_ii,
+        "a_exc": a_e,
+        "a_inh": a_i,
+        "mu_exc": theta_e,
+        "mu_inh": theta_i,
+        "exc_ext_baseline": baseline_e,
+        "inh_ext_baseline": baseline_i,
         # ----- External input (must exist) -----
-        'exc_ext': 0.0,
-        'inh_ext': 0.0,
-
+        "exc_ext": 0.0,
+        "inh_ext": 0.0,
         # ----- Noise (explicitly zero) -----
-        'sigma_ou': 0.0,
-        'tau_ou': 5.0,
-        'exc_ou_mean': 0.0,
-        'inh_ou_mean': 0.0,
-        'exc_ou': np.zeros((1,)),
-        'inh_ou': np.zeros((1,)),
-
+        "sigma_ou": 0.0,
+        "tau_ou": 5.0,
+        "exc_ou_mean": 0.0,
+        "inh_ou_mean": 0.0,
+        "exc_ou": np.zeros((1,)),
+        "inh_ou": np.zeros((1,)),
         # ----- Initial conditions -----
-        'exc_init': np.array([[E0]]),
-        'inh_init': np.array([[I0]]),
+        "exc_init": np.array([[E0]]),
+        "inh_init": np.array([[I0]]),
     }
 
     # Convert to dotdict (required by neurolib)
@@ -151,11 +147,12 @@ def test_no_delay_no_noise_vs_neurolib():
     except Exception as e:
         print(f"  ❌ Failed to create WCModel: {e}")
         import traceback
+
         traceback.print_exc()
         return
 
     # Set initial state
-    neurolib_model.initial_state = {'E': np.array([E0]), 'I': np.array([I0])}
+    neurolib_model.initial_state = {"E": np.array([E0]), "I": np.array([I0])}
 
     # Run simulation
     print("  Calling run()...")
@@ -166,6 +163,7 @@ def test_no_delay_no_noise_vs_neurolib():
     except Exception as e:
         print(f"  ❌ run() raised an exception: {e}")
         import traceback
+
         traceback.print_exc()
         return
     t_neurolib = time.perf_counter() - t0_neurolib
@@ -175,12 +173,12 @@ def test_no_delay_no_noise_vs_neurolib():
     if isinstance(neurolib_model.outputs, dict):
         print(f"  outputs keys: {list(neurolib_model.outputs.keys())}")
         neurolib_t = neurolib_model.t
-        neurolib_E = neurolib_model.outputs['exc'].squeeze()   # ✅ correct
-        neurolib_I = neurolib_model.outputs['inh'].squeeze()   # ✅ correct
+        neurolib_E = neurolib_model.outputs["exc"].squeeze()  # ✅ correct
+        neurolib_I = neurolib_model.outputs["inh"].squeeze()  # ✅ correct
         print(f"  neurolib runtime: {t_neurolib:.3f} s")
     else:
         print(f"  ❌ outputs is not a dict – cannot extract 'E' and 'I'.")
-        if hasattr(neurolib_model.outputs, 'shape'):
+        if hasattr(neurolib_model.outputs, "shape"):
             print(f"  outputs shape: {neurolib_model.outputs.shape}")
         print("  Integration did not run correctly. Check the error above.")
         return
@@ -208,8 +206,8 @@ def test_no_delay_no_noise_vs_neurolib():
         mean_exc_ou=0.0,
         mean_inh_ou=0.0,
         exc_ext_baseline=baseline_e,
-        inh_ext_baseline=baseline_i,    
-        fiber_count_matrix=fiber_count_matrix,
+        inh_ext_baseline=baseline_i,
+        fiber_density_matrix=fiber_density_matrix,
         fiber_length_matrix=fiber_length_matrix,
         seed=seed,
     )
@@ -219,9 +217,8 @@ def test_no_delay_no_noise_vs_neurolib():
         ts = jnp.arange(t0, t1, model.dt)
         # Create a dummy history: shape (num_unique_delays, 2, N) – all zeros.
         # Since connectivity is zero, its content is never actually used.
-        dummy_history = jnp.zeros(
-            (model.unique_delays.shape[0], 2, model.number_of_regions)
-        )
+        dummy_history = jnp.zeros((model.unique_delays.shape[0], 2, model.number_of_regions))
+
         def dynamics_wrapper(t, y, args):
             # y: (2, N)  – only E and I states
             return model.dynamics(t, y, args, history=dummy_history)
@@ -235,7 +232,7 @@ def test_no_delay_no_noise_vs_neurolib():
             t0=t0,
             t1=t1,
             dt0=model.dt,
-            y0=model.state[:2], # only E and I populations
+            y0=model.state[:2],  # only E and I populations
             args=None,
             saveat=diffrax.SaveAt(ts=ts),
             stepsize_controller=stepsize_controller,
@@ -270,10 +267,8 @@ def test_no_delay_no_noise_vs_neurolib():
     # ==================================================================
     print("\n--- Comparison ---")
     # Interpolate neurolib onto the JAX time grid (should be identical, but safe)
-    neurolib_E_interp = interp1d(neurolib_t, neurolib_E, kind='linear',
-                                 fill_value='extrapolate')(jax_ts)
-    neurolib_I_interp = interp1d(neurolib_t, neurolib_I, kind='linear',
-                                 fill_value='extrapolate')(jax_ts)
+    neurolib_E_interp = interp1d(neurolib_t, neurolib_E, kind="linear", fill_value="extrapolate")(jax_ts)
+    neurolib_I_interp = interp1d(neurolib_t, neurolib_I, kind="linear", fill_value="extrapolate")(jax_ts)
 
     # Compute error metrics
     max_diff_E = jnp.max(jnp.abs(jax_E - neurolib_E_interp))
@@ -293,7 +288,7 @@ def test_no_delay_no_noise_vs_neurolib():
     atol = 1e-4
     e_close = jnp.allclose(jax_E[1:], neurolib_E_interp[1:], rtol=rtol, atol=atol)
     i_close = jnp.allclose(jax_I, neurolib_I_interp, rtol=rtol, atol=atol)
-    
+
     print(f"\nWithin tolerance (rtol={rtol}, atol={atol})?")
     print(f"  Excitatory: {'✓ PASS' if e_close else '✗ FAIL'}")
     print(f"  Inhibitory: {'✓ PASS' if i_close else '✗ FAIL'}")
@@ -306,28 +301,29 @@ def test_no_delay_no_noise_vs_neurolib():
     # Optional: save plot for visual inspection
     try:
         import matplotlib.pyplot as plt
+
         fig, axes = plt.subplots(2, 1, figsize=(10, 8))
-        axes[0].plot(jax_ts, jax_E, 'b-', label='JAX E', linewidth=1)
-        axes[0].plot(neurolib_t, neurolib_E, 'r--', label='neurolib E', linewidth=1, alpha=0.7)
-        axes[0].set_ylabel('E activity')
+        axes[0].plot(jax_ts, jax_E, "b-", label="JAX E", linewidth=1)
+        axes[0].plot(neurolib_t, neurolib_E, "r--", label="neurolib E", linewidth=1, alpha=0.7)
+        axes[0].set_ylabel("E activity")
         axes[0].legend()
         axes[0].grid(alpha=0.3)
 
-        axes[1].plot(jax_ts, jax_I, 'g-', label='JAX I', linewidth=1)
-        axes[1].plot(neurolib_t, neurolib_I, 'm--', label='neurolib I', linewidth=1, alpha=0.7)
-        axes[1].set_ylabel('I activity')
-        axes[1].set_xlabel('Time (s)')
+        axes[1].plot(jax_ts, jax_I, "g-", label="JAX I", linewidth=1)
+        axes[1].plot(neurolib_t, neurolib_I, "m--", label="neurolib I", linewidth=1, alpha=0.7)
+        axes[1].set_ylabel("I activity")
+        axes[1].set_xlabel("Time (s)")
         axes[1].legend()
         axes[1].grid(alpha=0.3)
 
-        plt.suptitle('Wilson‑Cowan: JAX/Diffrax vs neurolib (deterministic, single node)')
+        plt.suptitle("Wilson‑Cowan: JAX/Diffrax vs neurolib (deterministic, single node)")
         plt.tight_layout()
-        plt.savefig('wc_validation_deterministic.png', dpi=150)
+        plt.savefig("wc_validation_deterministic.png", dpi=150)
         print("\nPlot saved as 'wc_validation_deterministic.png'")
     except ImportError:
         print("\nmatplotlib not installed – skipping plot generation.")
 
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
 
 if __name__ == "__main__":
