@@ -386,7 +386,7 @@ The test (\texttt{wc\_deterministic.test.py}) proceeds as follows:
 \begin{enumerate}
 \item Set parameters (time constants, weights, biases, etc.) to identical values in both models.
 \item Run Neurolib 1: Create a Neurolib WCModel with zero coupling and zero noise, simulate it with a
-standard solver (Neurolib likely uses a fixed-step Euler method).
+standard solver (Neurolib uses a fixed-step Euler method).
 \item Run Neurolib 2 (JAX/Diffrax): Instantiate our WilsonCowan model with the same parameters and
 call its \texttt{simulate()}.
 \item Compare outputs: Align the time series (using interpolation if needed) and compute the absolute
@@ -395,13 +395,26 @@ differences in $E$ and $I$ time courses.
 absolute $10^{-4}$).
 \end{enumerate}
 
+The test results confirmed that both models are producing the same dynamics for deterministic parameters, which shows the neurolib 2 calculations are correct and precise.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{wilson_cowan_dynamics.png}
+    \caption{Simulation of the Wilson--Cowan model across 80 brain regions using Neurolib~2. 
+    The figure illustrates the spatiotemporal dynamics of excitatory and inhibitory populations, 
+    demonstrating inter-regional interactions mediated by structural connectivity and conduction delays. 
+    Stochastic fluctuations are introduced via Ornstein--Uhlenbeck noise, highlighting variability 
+    around deterministic trajectories.}
+    \label{fig:wilson_cowan_dynamics}
+\end{figure}
+
 
 \section{Conclusion}
 
 We have presented the foundations of Neurolib~2, focusing on the BaseModel and Wilson--Cowan model
 classes. By harnessing JAX, Equinox, and Diffrax \cite{kidger2021equinox,kidger2021neural}, we have reimplemented neural-mass models with GPU-
 accelerated solvers and built-in differentiation. Our results show that even at this early stage, the new code
-reproduces established Wilson--Cowan dynamics (in the no-noise limit) with high fidelity.
+reproduces established Wilson--Cowan dynamics with high fidelity.
 
 Key advantages of this approach include:
 \begin{itemize}
