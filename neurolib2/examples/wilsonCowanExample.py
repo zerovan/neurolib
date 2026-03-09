@@ -17,7 +17,7 @@ print("fiber count matrix shape:", ds.Cmat.shape)
 print("fiber length matrix shape:", ds.Dmat.shape)
 
 # Select first 4 regions
-indices = slice(0, 50)
+indices = slice(0, 80)
 
 C_small = ds.Cmat[indices, indices]
 D_small = ds.Dmat[indices, indices]
@@ -39,28 +39,27 @@ if __name__ == "__main__":
     print("Model initialized.")
     print("Enter duration (q to quit)")
     
-    while True:
-        user_input = input("Duration: ")
+    # while True:
+        # user_input = input("Duration: ")
+    user_input = "10.0"
 
-        if user_input.lower() == "q":
-            break
 
-        try:
-            duration = float(user_input)
-        except ValueError:
-            print("Please enter a valid number.")
-            continue
+    try:
+        duration = float(user_input)
+    except ValueError:
+        print("Please enter a valid number.")
 
-        start = time.time()
 
-        times, states = model.simulate(duration)
-        model.plot(times, states)
-        states.block_until_ready()   # IMPORTANT for correct timing
+    start = time.time()
 
-        end = time.time()
+    times, states = model.simulate(duration)
+    model.plot(times, states)
+    states.block_until_ready()   # IMPORTANT for correct timing
 
-        print(f"Run took {end - start:.2f} seconds")
-        print("States shape:", states.shape)
-    
+    end = time.time()
+
+    print(f"Run took {end - start:.2f} seconds")
+    print("States shape:", states.shape)
+
     # grad_model = model.derivative_model(10.0, with_respect_to=["tau_e", "w_ee"])
     # print(grad_model.tau_e, grad_model.w_ee)

@@ -167,10 +167,11 @@ class WilsonCowan(BaseModel):
                 self.number_of_regions,
             )
 
+        # using UnsafeBrownianPath improves performance by ~20%, but disallows backpropagation
         brownian_motion = diffrax.VirtualBrownianTree(
             ts[0],
             ts[-1] + self.dt,
-            tol=1e-3,
+            tol=1e-2,
             shape=(
                 self.populations_per_region,
                 self.number_of_regions,
