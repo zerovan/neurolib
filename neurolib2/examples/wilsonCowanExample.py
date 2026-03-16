@@ -16,14 +16,6 @@ ds = Dataset("hcp")
 print("fiber count matrix shape:", ds.Cmat.shape)
 print("fiber length matrix shape:", ds.Dmat.shape)
 
-# Select first 4 regions
-indices = slice(0, 80)
-
-C_small = ds.Cmat[indices, indices]
-D_small = ds.Dmat[indices, indices]
-
-print("Reduced fiber count shape:", C_small.shape)
-print("Reduced fiber length shape:", D_small.shape)
 
 from neurolib2.models.wilsonCowanModel.wilsonCowanModel import WilsonCowan
 
@@ -32,27 +24,13 @@ if __name__ == "__main__":
     # model = WilsonCowan.create_default(dt=0.01)
     model = WilsonCowan.create_default(
         dt=0.01,
-        fiber_length_matrix=D_small,
-        fiber_count_matrix=C_small,
+        fiber_length_matrix=ds.Dmat,
+        fiber_count_matrix=ds.Cmat,
     )
-
-    print("Model initialized.")
-    print("Enter duration (q to quit)")
-    
-    # while True:
-        # user_input = input("Duration: ")
-    user_input = "10.0"
-
-
-    try:
-        duration = float(user_input)
-    except ValueError:
-        print("Please enter a valid number.")
-
 
     start = time.time()
 
-    times, states = model.simulate(duration)
+    times, states = model.simulate(500)
     model.plot(times, states)
     states.block_until_ready()   # IMPORTANT for correct timing
 
