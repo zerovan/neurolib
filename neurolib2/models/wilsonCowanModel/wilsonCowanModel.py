@@ -10,20 +10,16 @@ import matplotlib.pyplot as plt
 
 class WilsonCowan(BaseModel):
 
-    tau_EI: jax.Array
-    tau_IE: jax.Array
     tau_e: jax.Array
     tau_i: jax.Array
     w_ee: jax.Array
     w_ei: jax.Array
     w_ie: jax.Array
     w_ii: jax.Array
-    P_e: jax.Array
-    P_i: jax.Array
     a_e: jax.Array
     a_i: jax.Array
-    theta_e: jax.Array
-    theta_i: jax.Array
+    mu_e: jax.Array
+    mu_i: jax.Array
 
     sigma_ou: jax.Array
     tau_ou: jax.Array
@@ -39,20 +35,16 @@ class WilsonCowan(BaseModel):
         self,
         state: jnp.ndarray,
         dt: float = 0.1,
-        tau_EI: float = 1.0,
-        tau_IE: float = 2.0,
-        tau_e: float = 0.1,
-        tau_i: float = 0.5,
+        tau_e: float = 2.5,
+        tau_i: float = 3.75,
         w_ee: float = 16.0,
         w_ei: float = 12.0,
         w_ie: float = 15.0,
         w_ii: float = 3.0,
-        P_e: float = 1.0,
-        P_i: float = 0.0,
-        a_e: float = 1.0,
-        a_i: float = 1.0,
-        theta_e: float = 2.0,
-        theta_i: float = 2.0,
+        a_e: float = 1.5,
+        a_i: float = 1.5,
+        mu_e: float = 3.0,
+        mu_i: float = 3.0,
         sigma_ou: float = 0.5,
         tau_ou: float = 5.0,
         mean_exc_ou: float = 0.0,
@@ -62,21 +54,17 @@ class WilsonCowan(BaseModel):
         *args,
         **kwargs,
     ):
-        super().__init__(state=state, dt=dt, *args, **kwargs)
-        self.tau_EI = jnp.array(tau_EI)
-        self.tau_IE = jnp.array(tau_IE)
+        super().__init__(state=state, dt=dt, K_gl=3.15, *args, **kwargs)
         self.tau_e = jnp.array(tau_e)
         self.tau_i = jnp.array(tau_i)
         self.w_ee = jnp.array(w_ee)
         self.w_ei = jnp.array(w_ei)
         self.w_ie = jnp.array(w_ie)
         self.w_ii = jnp.array(w_ii)
-        self.P_e = jnp.array(P_e)
-        self.P_i = jnp.array(P_i)
         self.a_e = jnp.array(a_e)
         self.a_i = jnp.array(a_i)
-        self.theta_e = jnp.array(theta_e)
-        self.theta_i = jnp.array(theta_i)
+        self.mu_e = jnp.array(mu_e)
+        self.mu_i = jnp.array(mu_i)
 
         self.sigma_ou = jnp.array(sigma_ou)
         self.tau_ou = jnp.array(tau_ou)
@@ -90,10 +78,10 @@ class WilsonCowan(BaseModel):
         return 1.0 / (1.0 + jnp.exp(-a * (x - theta)))
 
     def _S_e(self, x: jnp.ndarray) -> jnp.ndarray:
-        return self._logistic(x, self.a_e, self.theta_e)
+        return self._logistic(x, self.a_e, self.mu_e)
 
     def _S_i(self, x: jnp.ndarray) -> jnp.ndarray:
-        return self._logistic(x, self.a_i, self.theta_i)
+        return self._logistic(x, self.a_i, self.mu_i)
 
     def dynamics(self, t, y, args, *, history):
         """
@@ -222,10 +210,9 @@ class WilsonCowan(BaseModel):
         plt.title("Wilson-Cowan: all node activities")
         plt.legend()
         plt.tight_layout()
-        
 
         if show:
-            plt.savefig('wc.png', dpi=150)
+            plt.savefig("wc.png", dpi=150)
 
     @staticmethod
     def create_default(

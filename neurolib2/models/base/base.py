@@ -24,7 +24,7 @@ class BaseModel(eqx.Module):
     delay_index_matrix: jnp.ndarray
     unique_delays: jnp.ndarray
 
-    K_gl: float = 1.0
+    K_gl: float
     dt: float
     t: float = 0.0
     key: jnp.ndarray
@@ -34,6 +34,7 @@ class BaseModel(eqx.Module):
         self,
         state,
         dt=0.1,
+        K_gl=1.0,
         fiber_count_matrix=jnp.ones((1, 1)),
         fiber_length_matrix=jnp.zeros((1, 1)),
         signal_propagation_speed: float = 20.0,
@@ -41,6 +42,7 @@ class BaseModel(eqx.Module):
     ):
         self.state = state
         self.dt = dt
+        self.K_gl = K_gl
         self.fiber_count_matrix = fiber_count_matrix
         # connectivity_matrix[to, from]
         self.connectivity_matrix = jnp.fill_diagonal(self.fiber_count_matrix, 0.0, inplace=False)
